@@ -716,7 +716,7 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
           <div class="field-group" style="margin:0">
             <label style="font-size:11px">Retención software (%)</label>
-            <input type="number" id="liqSWRetencion" value="22" min="0" max="50" step="0.5"
+            <input type="number" id="liqSWRetencion" value="20" min="0" max="50" step="0.5"
               style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit"
               oninput="calcLiqSW()">
           </div>
@@ -1131,10 +1131,10 @@ function calcLiqSW(){
   document.getElementById('liqSWTotal').innerHTML=`
     <div style="background:#575756;color:#fff;border-radius:var(--radius-lg);padding:14px 16px">
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center">
-        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Total Venta</div><div style="font-size:15px;font-weight:800">${fEUR(totalVenta)}</div></div>
-        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Total Costo</div><div style="font-size:15px;font-weight:800;color:#fca5a5">-${fEUR(totalCosto)}</div></div>
-        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Retención SW</div><div style="font-size:15px;font-weight:800;color:#fcd34d">-${fEUR(totalRetencion)}</div></div>
-        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Utilidad Total</div><div style="font-size:15px;font-weight:800;color:${totalUtilidad>=0?'#86efac':'#fca5a5'}">${fEUR(totalUtilidad)}</div><div style="font-size:11px;opacity:0.8">${margenTotal.toFixed(1)}%</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Total Venta</div><div style="font-size:15px;font-weight:800">${fEUR(totalVenta)}</div><div style="font-size:10px;opacity:0.65;margin-top:2px">${fCOPl(totalVenta)}</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Total Costo</div><div style="font-size:15px;font-weight:800;color:#fca5a5">-${fEUR(totalCosto)}</div><div style="font-size:10px;opacity:0.65;margin-top:2px">-${fCOPl(totalCosto)}</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Retención SW</div><div style="font-size:15px;font-weight:800;color:#fcd34d">-${fEUR(totalRetencion)}</div><div style="font-size:10px;opacity:0.65;margin-top:2px">-${fCOPl(totalRetencion)}</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Utilidad Total</div><div style="font-size:15px;font-weight:800;color:${totalUtilidad>=0?'#86efac':'#fca5a5'}">${fEUR(totalUtilidad)}</div><div style="font-size:10px;opacity:0.65;margin-top:2px">${fCOPl(totalUtilidad)}</div><div style="font-size:12px;font-weight:700;margin-top:3px;opacity:0.9">${margenTotal.toFixed(1)}%</div></div>
       </div>
     </div>`;
 }
