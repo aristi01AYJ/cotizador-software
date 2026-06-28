@@ -1157,8 +1157,8 @@ async function cargarMaquinas(){
         modelo:(f.Modelo||'').trim(),
         marca:(f[marcaField]||f.Marca||f.Marca0||f.MO||'').trim(),
         tipologia:(f[tipologiaField]||f.Tipologia||'').trim(),
-        estadoDisp:(f.ESTADO_||'DISPONIBLE').trim().toUpperCase(),
-        estadoStock:(f.ESTADO||'').trim(),
+        estadoDisp:'DISPONIBLE',
+        estadoStock:'Bajo Pedido',
         tarifa,
         ubicacion:(f.Ubicaci_x00f3_n||f.Ubicacion||'').trim(),
         descripcion:(f.Descripci_x00f3_n||f.Descripcion||f.Descripci_n||'').trim(),
@@ -1183,22 +1183,19 @@ async function cargarMaquinas(){
 }
 
 function procesarCatalogo(){
-  // DEBUG horas instalacion — ver en consola
-  if(rawMaquinas.length>0){
-    const sample=rawMaquinas.slice(0,3);
-    console.log('[AYJ] Muestra campos horas:',sample.map(m=>({title:m.title,horasInstalacion:m.horasInstalacion})));
-  }
   const disponibles=rawMaquinas.filter(m=>m.estadoDisp==='DISPONIBLE');
-  bajosPedido=rawMaquinas.filter(m=>m.estadoDisp==='BAJO PEDIDO').sort((a,b)=>a.title.localeCompare(b.title,'es'));
+  bajosPedido=[];
   const mapa={};
   disponibles.forEach(m=>{
     const key=m.title.toLowerCase().trim();
-    if(!mapa[key])mapa[key]={key,title:m.title,marca:m.marca,modelo:m.modelo,tipologia:m.tipologia,tarifa:m.tarifa,descripcion:m.descripcion,fichaTecnica:m.fichaTecnica,ytVideo:m.ytVideo||'',stockCount:0,importCount:0,horasInstalacion:m.horasInstalacion||0};
+    if(!mapa[key])mapa[key]={key,title:m.title,marca:m.marca,modelo:m.modelo,
+      tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',
+      tarifa:m.tarifa,descripcion:m.descripcion,
+      fichaTecnica:m.fichaTecnica,ytVideo:m.ytVideo||'',
+      stockCount:99,importCount:0,horasInstalacion:0,moneda:'EUR'};
     if(m.ytVideo&&!mapa[key].ytVideo)mapa[key].ytVideo=m.ytVideo;
-    const st=m.estadoStock.toLowerCase();
-    if(st.includes('importa'))mapa[key].importCount++;else mapa[key].stockCount++;
     if(m.fichaTecnica&&!mapa[key].fichaTecnica)mapa[key].fichaTecnica=m.fichaTecnica;
-    if(m.horasInstalacion&&!mapa[key].horasInstalacion)mapa[key].horasInstalacion=m.horasInstalacion;
+    if(m.tipoLicencia&&!mapa[key].tipoLicencia)mapa[key].tipoLicencia=m.tipoLicencia;
   });
   grupos=Object.values(mapa).sort((a,b)=>a.title.localeCompare(b.title));
 }
