@@ -1751,14 +1751,13 @@ async function guardarCotizacion(){
       Fecha_Cotizacion:new Date().toISOString(),
       Estado:'Enviada',
       Vendedor:vendedor||currentUserName||'Sin vendedor',
-      TasaEur:trm,
       Descuento:desc,
       Flete:fleteCOP||0,
       Garantia:garantia,
       CondicionPago:condPago,
       Validez:validez,
       Probabilidad:0,
-      Items:JSON.stringify(carrito.map(i=>({n:i.nombre,t:i.tarifa,c:i.cantidad,tl:i.tipoLicencia||'',m:'EUR'}))),
+      Items:JSON.stringify(carrito.map(i=>({n:i.nombre,t:i.tarifa,c:i.cantidad,tl:i.tipoLicencia||'',m:'EUR',tce:trm}))),
     };
     let itemCreado;
     if(modoEdicion){
