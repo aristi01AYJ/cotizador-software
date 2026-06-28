@@ -774,7 +774,7 @@ const SP_SITE='comercial';
 const msalConfig={auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}};
 const loginRequest={scopes:['Sites.ReadWrite.All','User.Read']};
 let msalInstance,siteId,listIdMaquinas,listIdClientes,listIdCotizaciones,listIdLiquidaciones;
-let rawMaquinas=[],grupos=[],bajosPedido=[],carrito=[],cotNum=1,trm=4200;
+let rawMaquinas=[],grupos=[],bajosPedido=[],carrito=[],cotNum=1,trm=4000;
 let historialData=[];
 let modoEdicion=null;
 let currentUserName='';
@@ -1111,20 +1111,15 @@ function mapItem(i){
   const _ft=f.Ficha_x0020_Tecnica||f.FichaTecnica||f.Ficha_Tecnica||null;
   const fichaTecnica=_ft?(typeof _ft==='object'?(_ft.Url||''):String(_ft).trim()):'';
   return{
-    id:i.id,title:(f.Title||'').trim(),modelo:(f.Modelo||'').trim(),marca:(f.Marca||f.Marca0||f.MO||'').trim(),
-    tipologia:(f.Tipologia||'').trim(),estadoDisp:(f.ESTADO_||'').trim().toUpperCase(),
-    estadoStock:(f.ESTADO||'').trim(),tarifa,
-    ubicacion:(f.Ubicaci_x00f3_n||f.Ubicacion||'').trim(),
-    descripcion:(f.Descripci_x00f3_n||f.Descripcion||f.Descripci_n||'').trim(),
+    id:i.id,title:(f.Title||'').trim(),modelo:(f.Modelo||'').trim(),marca:(f.Marca||f.Marca0||'IMOS').trim(),
+    tipologia:(f.Tipologia||'SOFTWARE').trim(),
+    tipoLicencia:(f.Tipo_licencia||f.TipoLicencia||'').trim(),
+    estadoDisp:'DISPONIBLE',
+    estadoStock:'Bajo Pedido',tarifa,
+    ubicacion:'',descripcion:'',
     fichaTecnica,
     ytVideo:(()=>{const v=f.YTvideo||f.YTVideo||f.Ytvideo||null;return v?(typeof v==='object'?(v.Url||''):String(v).trim()):'';})(),
-    observaciones:(f.Observaciones||'').trim(),
-    horasInstalacion:(()=>{
-      const v=f.HorasInstalacion||f.Horas_Instalacion||f.Horas_x0020_Instalalacion||f.Horas_x0020_Instalacion||null;
-      if(v===null||v===undefined){return 0;}
-      const n=parseFloat(String(v).replace(',','.'));
-      return isNaN(n)?0:n;
-    })(),
+    observaciones:'',horasInstalacion:0,moneda:'EUR',
   };
 }
 
@@ -1202,38 +1197,37 @@ function procesarCatalogo(){
 
 async function cargarTRM(){
   try{
-    // API pública del Banco de la República de Colombia
-    const hoy=new Date();
-    const dd=String(hoy.getDate()).padStart(2,'0');
-    const mm=String(hoy.getMonth()+1).padStart(2,'0');
-    const yyyy=hoy.getFullYear();
-    const fecha=`${yyyy}-${mm}-${dd}`;
-    const url=`https://www.datos.gov.co/resource/32sa-8pi3.json?vigenciadesde=${fecha}&vigenciahasta=${fecha}`;
-    const r=await fetch(url);
-    if(r.ok){
-      const data=await r.json();
-      if(data.length>0&&data[0].valor){
-        const trmHoy=Math.round(parseFloat(data[0].valor));
-        trm=trmHoy;
-        document.getElementById('trmInput').value=trmHoy;
-        document.getElementById('trmLabel').textContent='$ '+trmHoy.toLocaleString('es-CO')+' COP/USD · Banco República';
-        return;
-      }
-    }
-  }catch(e){}
-  // Si falla la API, mantener el valor por defecto
-  trm=parseFloat(document.getElementById('trmInput').value)||3650;
-  document.getElementById('trmLabel').textContent='$ '+Math.round(trm).toLocaleString('es-CO')+' COP/USD';
+    const r=await fetch('https://api.frankfurter.app/latest?from=EUR&to=COP');
+    const d=await r.json();
+    const rate=Math.round(d.rates?.COP||4000);
+    trm=rate;
+    document.getElementById('trmInput').value=rate;
+    document.getElementById('trmLabel').textContent='$ '+rate.toLocaleString('es-CO')+' COP/EUR · Frankfurter';
+    calcTotales();
+  }catch(e){
+    trm=parseFloat(document.getElementById('trmInput').value)||4000;
+    document.getElementById('trmLabel').textContent='$ '+Math.round(trm).toLocaleString('es-CO')+' COP/EUR';
+  }
 }
 
-function resetTRM(){
-  cargarTRM();
-  showToast('Actualizando TRM del Banco de la República...','success');
+async function resetTRM(){
+  try{
+    const r=await fetch('https://api.frankfurter.app/latest?from=EUR&to=COP');
+    const d=await r.json();
+    const rate=Math.round(d.rates?.COP||4000);
+    trm=rate;
+    document.getElementById('trmInput').value=rate;
+    document.getElementById('trmLabel').textContent='$ '+rate.toLocaleString('es-CO')+' COP/EUR';
+    calcTotales();
+    showToast('✓ Tasa EUR/COP: '+rate.toLocaleString('es-CO'),'success');
+  }catch(e){
+    showToast('No se pudo obtener la tasa EUR/COP','error');
+  }
 }
 
 function onTrmChange(){
-  trm=parseFloat(document.getElementById('trmInput').value)||1;
-  document.getElementById('trmLabel').textContent='$ '+Math.round(trm).toLocaleString('es-CO')+' COP/USD';
+  trm=parseFloat(document.getElementById('trmInput').value)||4000;
+  document.getElementById('trmLabel').textContent='$ '+Math.round(trm).toLocaleString('es-CO')+' COP/EUR';
   renderCatalogo();calcTotales();renderCarrito();
 }
 
@@ -1337,7 +1331,7 @@ function buildBpCard(m){
 function agregarGrupo(key,tipo){
   const g=grupos.find(x=>x.key===key);
   if(!g||carrito.some(i=>i.grupoKey===key&&i.tipo===tipo))return;
-  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo,nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tarifa:g.tarifa,descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:g.stockCount,importCount:g.importCount});
+  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
   renderCarrito();renderCatalogo();calcTotales();showToast('Agregado: '+g.title,'success');
 }
 function quitarGrupo(key,tipo){carrito=carrito.filter(i=>!(i.grupoKey===key&&i.tipo===tipo));renderCarrito();renderCatalogo();calcTotales();}
@@ -1374,7 +1368,7 @@ function renderCarrito(){
       +`<td style="text-align:center;vertical-align:middle;white-space:nowrap">`
         +`<div style="display:flex;align-items:center;gap:3px;justify-content:center">`
           +`<button onclick="cambiarCantCarrito(${i},-1)" style="width:20px;height:20px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer;font-size:12px;line-height:1;font-family:inherit">−</button>`
-          +`<span style="min-width:18px;text-align:center;font-weight:600;font-size:13px">${item.cantidad||1}</span>`
+          +`<input type="number" min="1" value="${item.cantidad||1}" onchange="setCantCarrito(${i},this.value)" style="width:38px;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;font-size:13px;font-weight:600;font-family:inherit">`
           +`<button onclick="cambiarCantCarrito(${i},1)" style="width:20px;height:20px;border:1px solid var(--green);border-radius:3px;background:var(--green-light);cursor:pointer;font-size:12px;line-height:1;color:var(--green-dark);font-family:inherit">+</button>`
         +`</div>`
         +`<div style="font-size:9px;color:var(--text3);margin-top:1px">${fmtUSD(precioUnit)}/u</div>`
