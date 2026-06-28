@@ -937,6 +937,28 @@ function _oldTablaPagos_REMOVED(condPago, totalUSD, totalCOP, fmtUSD, fmtCOP){
     +'</tr></tfoot>'
     +'</table></div>';
 }
+function getGrupoItem(tipologia, marca){
+  const tip=(tipologia||'').toUpperCase();
+  const mar=(marca||'').toUpperCase();
+  if(tip==='SOFTWARE') return 'Software';
+  if(tip==='CAPACITACION'&&mar==='AYJ') return 'Servicios AYJ';
+  if(tip==='CAPACITACION') return 'Servicios imos';
+  return 'Software'; // fallback
+}
+
+function getLicBadge(tipoLicencia, licenciamiento, marca){
+  const tl=(tipoLicencia||'').toLowerCase();
+  const lic=(licenciamiento||'');
+  const esAYJ=(marca||'').toUpperCase()==='AYJ';
+  let badge='';
+  if(tl.includes('perpetua')) badge='<span style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">📄 Lic. Perpetua</span>';
+  else if(tl.includes('suscripcion')||tl.includes('suscripción')) badge='<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔄 Suscripción</span>';
+  else if(tl.includes('servicio')) badge='<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔧 Servicio</span>';
+  if(lic) badge+='<span style="background:#F1F5F9;color:#475569;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block;margin-right:4px">'+lic+'</span>';
+  if(esAYJ&&tl.includes('servicio')) badge+='<span style="background:#FFF7ED;color:#C2410C;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">Servicio AYJ</span>';
+  return badge;
+}
+
 const VENDEDORES={
   'Adolfo':  {email:'adolfojose@ayj.com.co', tel:'+57 312 449 0088'},
   'Elkin':   {email:'evera@ayj.com.co',      tel:'+57 311 231 9422'},
@@ -1033,6 +1055,7 @@ function mapItem(i){
     id:i.id,title:(f.Title||'').trim(),modelo:(f.Modelo||'').trim(),marca:(f.Marca||f.Marca0||'IMOS').trim(),
     tipologia:(f.Tipologia||'SOFTWARE').trim(),
     tipoLicencia:(f.Tipo_licencia||f.TipoLicencia||'').trim(),
+    licenciamiento:(f.Licenciamiento||'').trim(),
     estadoDisp:'DISPONIBLE',
     estadoStock:'Bajo Pedido',tarifa,
     ubicacion:'',descripcion:'',
@@ -1103,7 +1126,7 @@ function procesarCatalogo(){
   disponibles.forEach(m=>{
     const key=m.title.toLowerCase().trim();
     if(!mapa[key])mapa[key]={key,title:m.title,marca:m.marca,modelo:m.modelo,
-      tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',
+      tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',licenciamiento:m.licenciamiento||'',
       tarifa:m.tarifa,descripcion:m.descripcion,
       fichaTecnica:m.fichaTecnica,ytVideo:m.ytVideo||'',
       stockCount:99,importCount:0,horasInstalacion:0,moneda:'EUR'};
@@ -1251,7 +1274,7 @@ function buildBpCard(m){
 function agregarGrupo(key,tipo){
   const g=grupos.find(x=>x.key===key);
   if(!g||carrito.some(i=>i.grupoKey===key&&i.tipo===tipo))return;
-  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
+  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',licenciamiento:g.licenciamiento||'',tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
   renderCarrito();renderCatalogo();calcTotales();showToast('Agregado: '+g.title,'success');
 }
 function quitarGrupo(key,tipo){carrito=carrito.filter(i=>!(i.grupoKey===key&&i.tipo===tipo));renderCarrito();renderCatalogo();calcTotales();}
@@ -1271,18 +1294,17 @@ function renderCarrito(){
   carrito.forEach((item,i)=>{
     const pdfCell=item.fichaTecnica?`<a class="btn-pdf" href="${item.fichaTecnica}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--red);white-space:nowrap;"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Ver Ficha Técnica</a>`:'';
     const ytCell=item.ytVideo?`<a class="btn-pdf" href="${item.ytVideo}" target="_blank" title="Ver video en YouTube" style="color:#FF0000"><i class="ti ti-brand-youtube"></i></a>`:'';
-    const tl2=(item.tipoLicencia||'').toLowerCase();
-    const badge=tl2.includes('perpetua')
-      ?'<span class="item-tipo-badge" style="background:#EDE9FE;color:#5B21B6;font-weight:600">📄 Lic. Perpetua</span>'
-      :tl2.includes('suscripcion')||tl2.includes('suscripción')
-        ?'<span class="item-tipo-badge" style="background:#DBEAFE;color:#1E3A8A;font-weight:600">🔄 Suscripción</span>'
-        :tl2.includes('servicio')
-          ?'<span class="item-tipo-badge" style="background:#FEF3C7;color:#92400E;font-weight:600">🔧 Servicio</span>'
-          :'<span class="item-tipo-badge pedido">📦 Bajo Pedido</span>';
+    const badge=getLicBadge(item.tipoLicencia,item.licenciamiento,item.marca);
     const precioUnit=item.tarifa/(item.cantidad||1);
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="color:var(--text3);font-size:12px">${i+1}</td>`
-      +`<td><div class="item-name">${item.nombre}</div><div class="item-sub" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600;color:#575756">${item.marca||''}</span>${item.modelo?'<span style="color:var(--text3)">·</span><span>'+item.modelo+'</span>':''}</div>${badge}</td>`
+      +`<td>
+  <div class="item-name">${item.nombre}</div>
+  <div class="item-sub" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">
+    <span style="font-weight:600;color:#575756">${(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':item.marca||''}</span>
+  </div>
+  <div style="margin-top:4px">${badge}</div>
+</td>`
       +`<td style="vertical-align:middle"><span class="item-tipo-badge" style="background:var(--bg);color:var(--text2);font-size:10px">${item.tipologia||'—'}</span></td>`
       +`<td style="text-align:center;vertical-align:middle;white-space:nowrap">${pdfCell}${ytCell}</td>`
       +`<td style="text-align:center;vertical-align:middle;white-space:nowrap">`
@@ -1728,26 +1750,26 @@ function generarPDF(d, soloRetornar=false){
   const garantiaTexto=d.garantia||'12 meses o 2.000 horas';
   const cli=d.clienteInfo||{};
 
-  const filas=d.items.map((item,idx)=>{
-    const esUltimaUnidad=item.tipo==='stock'&&(item.stockCount===1||item.cantidad===1&&item.stockCount<=1);
-    const tipoLabel=esUltimaUnidad?'🔥 ÚLTIMA UNIDAD':item.tipo==='stock'?'En Stock':item.tipo==='importacion'?'En Importación':'Bajo Pedido';
-    const tipoBg=esUltimaUnidad?'#FEE2E2':item.tipo==='stock'?'#eaf2d7':item.tipo==='importacion'?'#e8eef7':'#faeeda';
-    const tipoColor=esUltimaUnidad?'#991B1B':item.tipo==='stock'?'#4a6a0a':item.tipo==='importacion'?'#2a4a7a':'#854F0B';
+  // Agrupar items por tipo
+  const grupos_pdf={
+    'Software': d.items.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Software'),
+    'Servicios imos': d.items.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios imos'),
+    'Servicios AYJ': d.items.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios AYJ'),
+  };
+  const grupos_activos=Object.entries(grupos_pdf).filter(([,items])=>items.length>0);
+  const tieneGrupos=grupos_activos.length>1;
+
+  function buildFilasPDF(items_grupo, idx_start=0){return items_grupo.map((item,idx)=>{
+    const idxGlobal=idx_start+idx;
+    const licBadgeHTML=getLicBadge(item.tipoLicencia,item.licenciamiento,item.marca);
+    const marcaLabel=(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':(item.marca||'');
     return '<tr>'
-      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;font-size:11px;color:#999;text-align:center;">'+(idx+1)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;font-size:11px;color:#999;text-align:center;">'+(idxGlobal+1)+'</td>'
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;">'
       +'<div style="font-weight:700;font-size:13px;color:#2a2a2a;">'+item.nombre+'</div>'
-      +(item.marca||item.modelo?'<div style="font-size:11px;color:#777;margin-top:2px;">'+(item.marca||'')+(item.modelo?' · '+item.modelo:'')+'</div>':'')
+      +(item.marca?'<div style="font-size:11px;color:#777;margin-top:2px;font-weight:600;">'+marcaLabel+'</div>':'')
       +(item.tipologia?'<div style="font-size:11px;color:#777;margin-top:3px;font-weight:500;">'+item.tipologia+'</div>':'')
-    +(item.fichaTecnica||item.ytVideo||tipoLabel?
-      '<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-      +(item.fichaTecnica?'<a href="'+item.fichaTecnica+'" target="_blank" style="font-size:10px;color:#c0392b;text-decoration:none;display:inline-flex;align-items:center;gap:2px;border:1px solid #f5c6c6;border-radius:4px;padding:1px 6px;background:#fff8f8"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Ficha Técnica</a>':'')
-      +(item.fichaTecnica&&item.ytVideo?'<span style="color:#ccc;font-size:10px">|</span>':'')
-      +(item.ytVideo?'<a href="'+item.ytVideo+'" target="_blank" style="font-size:10px;color:#FF0000;text-decoration:none;display:inline-flex;align-items:center;gap:2px;border:1px solid #ffd0d0;border-radius:4px;padding:1px 6px;background:#fff8f8"><svg width="10" height="10" viewBox="0 0 24 24" fill="#FF0000"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58a2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.96-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg> Video</a>':'')
-      +((item.fichaTecnica||item.ytVideo)&&tipoLabel?'<span style="color:#ccc;font-size:10px">|</span>':'')
-      +'<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:'+tipoBg+';color:'+tipoColor+';font-weight:500;">'+tipoLabel+'</span>'
-      +'</div>'
-      :'')
+    +(licBadgeHTML?'<div style="margin-top:5px;">'+licBadgeHTML+'</div>':'')
       +'</td>'
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;text-align:right;white-space:nowrap;vertical-align:top;">'
       +(d.modoCOP
@@ -1757,7 +1779,25 @@ function generarPDF(d, soloRetornar=false){
       )
       +'</td>'
       +'</tr>';
-  }).join('');
+  }).join('');}
+
+  // Construir tabla con grupos si hay más de uno
+  let filas='';
+  if(tieneGrupos){
+    let idx_acum=0;
+    grupos_activos.forEach(([grupo, items_g])=>{
+      const subtotalGrupo=items_g.reduce((s,i)=>s+(i.tarifa||0),0);
+      const descGrupo=(d.desc||0);
+      filas+=`<tr><td colspan="3" style="padding:8px 12px;background:#575756;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase">${grupo}</td></tr>`;
+      filas+=buildFilasPDF(items_g, idx_acum);
+      idx_acum+=items_g.length;
+      if(grupos_activos.length>1){
+        filas+=`<tr style="background:#f5f7f0"><td colspan="2" style="padding:6px 12px;font-size:11px;font-weight:700;color:#575756;padding-left:20px">Subtotal ${grupo}</td><td style="padding:6px 12px;text-align:right;font-weight:700;color:#80A61B;font-size:12px">`+(d.modoCOP?fCOP(subtotalGrupo):fUSD(subtotalGrupo))+`</td></tr>`;
+      }
+    });
+  } else {
+    filas=buildFilasPDF(d.items);
+  }
 
   const condiciones=''
     +'<div style="page-break-before:always;padding-top:20px;">'
@@ -3502,6 +3542,28 @@ function _oldTablaPagos_REMOVED(condPago, totalUSD, totalCOP, fmtUSD, fmtCOP){
     +'</tr></tfoot>'
     +'</table></div>';
 }
+function getGrupoItem(tipologia, marca){
+  const tip=(tipologia||'').toUpperCase();
+  const mar=(marca||'').toUpperCase();
+  if(tip==='SOFTWARE') return 'Software';
+  if(tip==='CAPACITACION'&&mar==='AYJ') return 'Servicios AYJ';
+  if(tip==='CAPACITACION') return 'Servicios imos';
+  return 'Software'; // fallback
+}
+
+function getLicBadge(tipoLicencia, licenciamiento, marca){
+  const tl=(tipoLicencia||'').toLowerCase();
+  const lic=(licenciamiento||'');
+  const esAYJ=(marca||'').toUpperCase()==='AYJ';
+  let badge='';
+  if(tl.includes('perpetua')) badge='<span style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">📄 Lic. Perpetua</span>';
+  else if(tl.includes('suscripcion')||tl.includes('suscripción')) badge='<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔄 Suscripción</span>';
+  else if(tl.includes('servicio')) badge='<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔧 Servicio</span>';
+  if(lic) badge+='<span style="background:#F1F5F9;color:#475569;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block;margin-right:4px">'+lic+'</span>';
+  if(esAYJ&&tl.includes('servicio')) badge+='<span style="background:#FFF7ED;color:#C2410C;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">Servicio AYJ</span>';
+  return badge;
+}
+
 const VENDEDORES={
   'Adolfo':  {email:'adolfojose@ayj.com.co', tel:'+57 312 449 0088'},
   'Elkin':   {email:'evera@ayj.com.co',      tel:'+57 311 231 9422'},
@@ -3598,6 +3660,7 @@ function mapItem(i){
     id:i.id,title:(f.Title||'').trim(),modelo:(f.Modelo||'').trim(),marca:(f.Marca||f.Marca0||'IMOS').trim(),
     tipologia:(f.Tipologia||'SOFTWARE').trim(),
     tipoLicencia:(f.Tipo_licencia||f.TipoLicencia||'').trim(),
+    licenciamiento:(f.Licenciamiento||'').trim(),
     estadoDisp:'DISPONIBLE',
     estadoStock:'Bajo Pedido',tarifa,
     ubicacion:'',descripcion:'',
@@ -3668,7 +3731,7 @@ function procesarCatalogo(){
   disponibles.forEach(m=>{
     const key=m.title.toLowerCase().trim();
     if(!mapa[key])mapa[key]={key,title:m.title,marca:m.marca,modelo:m.modelo,
-      tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',
+      tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',licenciamiento:m.licenciamiento||'',
       tarifa:m.tarifa,descripcion:m.descripcion,
       fichaTecnica:m.fichaTecnica,ytVideo:m.ytVideo||'',
       stockCount:99,importCount:0,horasInstalacion:0,moneda:'EUR'};
@@ -3816,7 +3879,7 @@ function buildBpCard(m){
 function agregarGrupo(key,tipo){
   const g=grupos.find(x=>x.key===key);
   if(!g||carrito.some(i=>i.grupoKey===key&&i.tipo===tipo))return;
-  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
+  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',licenciamiento:g.licenciamiento||'',tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
   renderCarrito();renderCatalogo();calcTotales();showToast('Agregado: '+g.title,'success');
 }
 function quitarGrupo(key,tipo){carrito=carrito.filter(i=>!(i.grupoKey===key&&i.tipo===tipo));renderCarrito();renderCatalogo();calcTotales();}
@@ -3836,18 +3899,17 @@ function renderCarrito(){
   carrito.forEach((item,i)=>{
     const pdfCell=item.fichaTecnica?`<a class="btn-pdf" href="${item.fichaTecnica}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--red);white-space:nowrap;"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Ver Ficha Técnica</a>`:'';
     const ytCell=item.ytVideo?`<a class="btn-pdf" href="${item.ytVideo}" target="_blank" title="Ver video en YouTube" style="color:#FF0000"><i class="ti ti-brand-youtube"></i></a>`:'';
-    const tl2=(item.tipoLicencia||'').toLowerCase();
-    const badge=tl2.includes('perpetua')
-      ?'<span class="item-tipo-badge" style="background:#EDE9FE;color:#5B21B6;font-weight:600">📄 Lic. Perpetua</span>'
-      :tl2.includes('suscripcion')||tl2.includes('suscripción')
-        ?'<span class="item-tipo-badge" style="background:#DBEAFE;color:#1E3A8A;font-weight:600">🔄 Suscripción</span>'
-        :tl2.includes('servicio')
-          ?'<span class="item-tipo-badge" style="background:#FEF3C7;color:#92400E;font-weight:600">🔧 Servicio</span>'
-          :'<span class="item-tipo-badge pedido">📦 Bajo Pedido</span>';
+    const badge=getLicBadge(item.tipoLicencia,item.licenciamiento,item.marca);
     const precioUnit=item.tarifa/(item.cantidad||1);
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="color:var(--text3);font-size:12px">${i+1}</td>`
-      +`<td><div class="item-name">${item.nombre}</div><div class="item-sub" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600;color:#575756">${item.marca||''}</span>${item.modelo?'<span style="color:var(--text3)">·</span><span>'+item.modelo+'</span>':''}</div>${badge}</td>`
+      +`<td>
+  <div class="item-name">${item.nombre}</div>
+  <div class="item-sub" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">
+    <span style="font-weight:600;color:#575756">${(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':item.marca||''}</span>
+  </div>
+  <div style="margin-top:4px">${badge}</div>
+</td>`
       +`<td style="vertical-align:middle"><span class="item-tipo-badge" style="background:var(--bg);color:var(--text2);font-size:10px">${item.tipologia||'—'}</span></td>`
       +`<td style="text-align:center;vertical-align:middle;white-space:nowrap">${pdfCell}${ytCell}</td>`
       +`<td style="text-align:center;vertical-align:middle;white-space:nowrap">`
@@ -4294,25 +4356,15 @@ function generarPDF(d, soloRetornar=false){
   const cli=d.clienteInfo||{};
 
   const filas=d.items.map((item,idx)=>{
-    const esUltimaUnidad=item.tipo==='stock'&&(item.stockCount===1||item.cantidad===1&&item.stockCount<=1);
-    const tipoLabel=esUltimaUnidad?'🔥 ÚLTIMA UNIDAD':item.tipo==='stock'?'En Stock':item.tipo==='importacion'?'En Importación':'Bajo Pedido';
-    const tipoBg=esUltimaUnidad?'#FEE2E2':item.tipo==='stock'?'#eaf2d7':item.tipo==='importacion'?'#e8eef7':'#faeeda';
-    const tipoColor=esUltimaUnidad?'#991B1B':item.tipo==='stock'?'#4a6a0a':item.tipo==='importacion'?'#2a4a7a':'#854F0B';
+    const licBadgeHTML=getLicBadge(item.tipoLicencia,item.licenciamiento,item.marca);
+    const marcaLabel=(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':(item.marca||'');
     return '<tr>'
-      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;font-size:11px;color:#999;text-align:center;">'+(idx+1)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;font-size:11px;color:#999;text-align:center;">'+(idxGlobal+1)+'</td>'
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;">'
       +'<div style="font-weight:700;font-size:13px;color:#2a2a2a;">'+item.nombre+'</div>'
-      +(item.marca||item.modelo?'<div style="font-size:11px;color:#777;margin-top:2px;">'+(item.marca||'')+(item.modelo?' · '+item.modelo:'')+'</div>':'')
+      +(item.marca?'<div style="font-size:11px;color:#777;margin-top:2px;font-weight:600;">'+marcaLabel+'</div>':'')
       +(item.tipologia?'<div style="font-size:11px;color:#777;margin-top:3px;font-weight:500;">'+item.tipologia+'</div>':'')
-    +(item.fichaTecnica||item.ytVideo||tipoLabel?
-      '<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-      +(item.fichaTecnica?'<a href="'+item.fichaTecnica+'" target="_blank" style="font-size:10px;color:#c0392b;text-decoration:none;display:inline-flex;align-items:center;gap:2px;border:1px solid #f5c6c6;border-radius:4px;padding:1px 6px;background:#fff8f8"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Ficha Técnica</a>':'')
-      +(item.fichaTecnica&&item.ytVideo?'<span style="color:#ccc;font-size:10px">|</span>':'')
-      +(item.ytVideo?'<a href="'+item.ytVideo+'" target="_blank" style="font-size:10px;color:#FF0000;text-decoration:none;display:inline-flex;align-items:center;gap:2px;border:1px solid #ffd0d0;border-radius:4px;padding:1px 6px;background:#fff8f8"><svg width="10" height="10" viewBox="0 0 24 24" fill="#FF0000"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58a2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.96-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg> Video</a>':'')
-      +((item.fichaTecnica||item.ytVideo)&&tipoLabel?'<span style="color:#ccc;font-size:10px">|</span>':'')
-      +'<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:'+tipoBg+';color:'+tipoColor+';font-weight:500;">'+tipoLabel+'</span>'
-      +'</div>'
-      :'')
+    +(licBadgeHTML?'<div style="margin-top:5px;">'+licBadgeHTML+'</div>':'')
       +'</td>'
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;text-align:right;white-space:nowrap;vertical-align:top;">'
       +(d.modoCOP
