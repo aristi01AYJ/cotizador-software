@@ -252,6 +252,7 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
       <button class="active" id="navNueva" onclick="switchView('nueva')">Nueva oferta</button>
       <button id="navClientes" onclick="switchView('clientes')">Clientes</button>
       <button id="navHistorial" onclick="switchView('historial')">Historial</button>
+      <button onclick="abrirLiqSW()" style="background:none;border:none;padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);font-family:inherit"><i class="ti ti-calculator"></i> Liquidador</button>
       
       
       
@@ -696,6 +697,46 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
   </div>
 </div>
 
+
+<!-- MODAL LIQUIDADOR SW -->
+<div id="liqSWModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:var(--radius-lg);width:680px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="background:#575756;color:#fff;padding:14px 20px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:15px;font-weight:700">🔒 Liquidador imos — Uso Interno</span>
+      <button onclick="cerrarLiqSW()" style="background:none;border:none;cursor:pointer;color:#fff;font-size:20px">×</button>
+    </div>
+    <div style="padding:20px">
+
+      <!-- Resumen por grupo -->
+      <div id="liqSWResumen" style="margin-bottom:16px"></div>
+
+      <!-- Parámetros -->
+      <div style="background:#f5f7f0;border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:#575756;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Parámetros</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field-group" style="margin:0">
+            <label style="font-size:11px">Retención software (%)</label>
+            <input type="number" id="liqSWRetencion" value="22" min="0" max="50" step="0.5"
+              style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit"
+              oninput="calcLiqSW()">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label style="font-size:11px">TCE (EUR/COP)</label>
+            <input type="number" id="liqSWTCE" value="4000" step="10"
+              style="width:90px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit"
+              oninput="calcLiqSW()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla por grupo -->
+      <div id="liqSWTabla"></div>
+
+      <!-- Total -->
+      <div id="liqSWTotal" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -991,6 +1032,113 @@ function getVendedorInfo(nombre){
 }
 function emailVendedor(nombre){ return getVendedorInfo(nombre).email; }
 function telVendedor(nombre){ return getVendedorInfo(nombre).tel; }
+
+// ══ LIQUIDADOR SW ══════════════════════════════════════
+let liqSWDesbloqueado = false;
+
+function abrirLiqSW(){
+  if(!liqSWDesbloqueado){
+    const clave=prompt('Clave para acceder al Liquidador:');
+    if(!clave) return;
+    if(clave!=='AYJ860'){showToast('Clave incorrecta','error');return;}
+    liqSWDesbloqueado=true;
+  }
+  if(!carrito.length){showToast('El carrito está vacío','error');return;}
+  // Sincronizar TCE
+  const tce=parseFloat(document.getElementById('trmInput')?.value)||4000;
+  document.getElementById('liqSWTCE').value=tce;
+  calcLiqSW();
+  document.getElementById('liqSWModal').style.display='flex';
+}
+
+function cerrarLiqSW(){
+  document.getElementById('liqSWModal').style.display='none';
+}
+
+function calcLiqSW(){
+  const retencionPct=parseFloat(document.getElementById('liqSWRetencion')?.value)||22;
+  const tce=parseFloat(document.getElementById('liqSWTCE')?.value)||4000;
+  const fEUR=n=>'€ '+Math.round(n||0).toLocaleString('es-CO');
+  const fCOPl=n=>'COP '+Math.round((n||0)*tce).toLocaleString('es-CO');
+
+  // Agrupar carrito
+  const grupos={
+    'Software (Licencias)': carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Software'),
+    'Servicios AYJ':        carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios AYJ'),
+    'Servicios imos':       carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios imos'),
+  };
+
+  const descLic=parseFloat(document.getElementById('descInput')?.value)||0;
+  const descAYJ=parseFloat(document.getElementById('descAYJ')?.value)||0;
+  const descEsp=document.getElementById('descEspecialChk')?.checked?3:0;
+
+  let totalVenta=0, totalCosto=0, totalRetencion=0, totalUtilidad=0;
+  let tablaHTML='';
+
+  Object.entries(grupos).forEach(([grupo, items])=>{
+    if(!items.length) return;
+    const esSW=grupo.includes('Licencias');
+    const esAYJ=grupo.includes('AYJ');
+    const descGrupo=esSW?(descLic+descEsp):esAYJ?descAYJ:0;
+
+    const venta=items.reduce((s,i)=>s+(i.tarifa||0),0);
+    const ventaDescuento=venta*(1-descGrupo/100);
+    const costo=items.reduce((s,i)=>s+((i.costoAYJ||0)*(i.cantidad||1)),0);
+    const retencion=esSW?costo*(retencionPct/100):0;
+    const utilidad=ventaDescuento-costo-retencion;
+    const margen=ventaDescuento>0?utilidad/ventaDescuento*100:0;
+
+    totalVenta+=ventaDescuento;
+    totalCosto+=costo;
+    totalRetencion+=retencion;
+    totalUtilidad+=utilidad;
+
+    tablaHTML+=`
+    <div style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+      <div style="background:#575756;color:#fff;padding:8px 14px;font-size:12px;font-weight:700">${grupo}${descGrupo>0?' <span style="font-size:10px;opacity:0.8">(desc. '+descGrupo+'%)</span>':''}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="background:#f9f9f7">
+          <td style="padding:7px 14px;color:#575756;font-weight:600">Precio venta${descGrupo>0?' (c/dto)':''}</td>
+          <td style="padding:7px 14px;text-align:right;font-weight:700;color:#80A61B">${fEUR(ventaDescuento)}</td>
+          <td style="padding:7px 14px;text-align:right;font-size:11px;color:#888">${fCOPl(ventaDescuento)}</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 14px;color:#575756">Costo AYJ</td>
+          <td style="padding:7px 14px;text-align:right;color:#e24b4a;font-weight:600">-${fEUR(costo)}</td>
+          <td style="padding:7px 14px;text-align:right;font-size:11px;color:#888">-${fCOPl(costo)}</td>
+        </tr>
+        ${esSW?`<tr>
+          <td style="padding:7px 14px;color:#854F0B">Retención ${retencionPct}% (s/costo)</td>
+          <td style="padding:7px 14px;text-align:right;color:#854F0B;font-weight:600">-${fEUR(retencion)}</td>
+          <td style="padding:7px 14px;text-align:right;font-size:11px;color:#888">-${fCOPl(retencion)}</td>
+        </tr>`:''}
+        <tr style="background:${utilidad>=0?'#f0fdf4':'#fef2f2'}">
+          <td style="padding:8px 14px;font-weight:700;color:${utilidad>=0?'#14532D':'#991B1B'}">Utilidad</td>
+          <td style="padding:8px 14px;text-align:right;font-weight:800;font-size:14px;color:${utilidad>=0?'#14532D':'#991B1B'}">${fEUR(utilidad)}</td>
+          <td style="padding:8px 14px;text-align:right;font-size:11px;color:#888">${fCOPl(utilidad)}</td>
+        </tr>
+        <tr style="background:#f5f7f0">
+          <td style="padding:6px 14px;font-size:11px;color:#575756">Rentabilidad</td>
+          <td colspan="2" style="padding:6px 14px;text-align:right;font-size:13px;font-weight:700;color:${margen>=30?'#14532D':margen>=15?'#854F0B':'#991B1B'}">${margen.toFixed(1)}%</td>
+        </tr>
+      </table>
+    </div>`;
+  });
+
+  document.getElementById('liqSWTabla').innerHTML=tablaHTML;
+
+  const margenTotal=totalVenta>0?totalUtilidad/totalVenta*100:0;
+  document.getElementById('liqSWTotal').innerHTML=`
+    <div style="background:#575756;color:#fff;border-radius:var(--radius-lg);padding:14px 16px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center">
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Total Venta</div><div style="font-size:15px;font-weight:800">${fEUR(totalVenta)}</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Total Costo</div><div style="font-size:15px;font-weight:800;color:#fca5a5">-${fEUR(totalCosto)}</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Retención SW</div><div style="font-size:15px;font-weight:800;color:#fcd34d">-${fEUR(totalRetencion)}</div></div>
+        <div><div style="font-size:10px;opacity:0.7;margin-bottom:4px">Utilidad Total</div><div style="font-size:15px;font-weight:800;color:${totalUtilidad>=0?'#86efac':'#fca5a5'}">${fEUR(totalUtilidad)}</div><div style="font-size:11px;opacity:0.8">${margenTotal.toFixed(1)}%</div></div>
+      </div>
+    </div>`;
+}
+
 async function initMsal(){
   msalInstance=new msal.PublicClientApplication(msalConfig);
   await msalInstance.initialize();
@@ -1117,7 +1265,9 @@ async function cargarMaquinas(){
         descripcion:(f.Modelo||f.Descripci_x00f3_n||f.Descripcion||'').trim(),
         fichaTecnica,
         ytVideo:(()=>{const v=f.YTvideo||f.YTVideo||null;return v?(typeof v==='object'?(v.Url||''):String(v).trim()):'';})(),
-        horasInstalacion:parseFloat(String(f.HorasInstalacion||f.Horas_Instalacion||'0').replace(',','.'))||0,moneda:'EUR',
+        horasInstalacion:parseFloat(String(f.HorasInstalacion||f.Horas_Instalacion||'0').replace(',','.'))||0,
+        costoAYJ:parseFloat(String(f.COSTO_AYJ||f.CostoAYJ||'0').replace(/[^0-9.,]/g,'').replace(',','.'))||0,
+        moneda:'EUR',
       };
     }).filter(m=>m.title);
     const marcas=[...new Set(rawMaquinas.map(m=>m.marca).filter(Boolean))].sort();
@@ -1144,7 +1294,7 @@ function procesarCatalogo(){
       tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',licenciamiento:m.licenciamiento||'',
       tarifa:m.tarifa,descripcion:m.descripcion,
       fichaTecnica:m.fichaTecnica,ytVideo:m.ytVideo||'',
-      stockCount:99,importCount:0,horasInstalacion:m.horasInstalacion||0,moneda:'EUR'};
+      stockCount:99,importCount:0,horasInstalacion:m.horasInstalacion||0,costoAYJ:m.costoAYJ||0,moneda:'EUR'};
     if(m.ytVideo&&!mapa[key].ytVideo)mapa[key].ytVideo=m.ytVideo;
     if(m.fichaTecnica&&!mapa[key].fichaTecnica)mapa[key].fichaTecnica=m.fichaTecnica;
     if(m.tipoLicencia&&!mapa[key].tipoLicencia)mapa[key].tipoLicencia=m.tipoLicencia;
@@ -1291,7 +1441,7 @@ function buildBpCard(m){
 function agregarGrupo(key,tipo){
   const g=grupos.find(x=>x.key===key);
   if(!g||carrito.some(i=>i.grupoKey===key&&i.tipo===tipo))return;
-  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',licenciamiento:g.licenciamiento||'',horasInstalacion:g.horasInstalacion||0,tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
+  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',licenciamiento:g.licenciamiento||'',horasInstalacion:g.horasInstalacion||0,costoAYJ:g.costoAYJ||0,tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
   renderCarrito();renderCatalogo();calcTotales();showToast('Agregado: '+g.title,'success');
 }
 function quitarGrupo(key,tipo){carrito=carrito.filter(i=>!(i.grupoKey===key&&i.tipo===tipo));renderCarrito();renderCatalogo();calcTotales();}
