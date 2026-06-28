@@ -1157,7 +1157,7 @@ async function cargarMaquinas(){
         modelo:(f.Modelo||'').trim(),
         marca:(f[marcaField]||f.Marca||f.Marca0||f.MO||'').trim(),
         tipologia:(f[tipologiaField]||f.Tipologia||'').trim(),
-        estadoDisp:(f.ESTADO_||'').trim().toUpperCase(),
+        estadoDisp:(f.ESTADO_||'DISPONIBLE').trim().toUpperCase(),
         estadoStock:(f.ESTADO||'').trim(),
         tarifa,
         ubicacion:(f.Ubicaci_x00f3_n||f.Ubicacion||'').trim(),
