@@ -1803,8 +1803,12 @@ function generarPDF(d, soloRetornar=false){
       +(item.modelo?'<div style="font-size:11px;color:#555;margin-top:3px;line-height:1.4;">'+item.modelo+'</div>':'')
       +((item.tipoLicencia||'').toLowerCase().includes('servicio')&&item.horasInstalacion?'<div style="font-size:11px;color:#166534;font-weight:600;margin-top:4px;">⏱ '+item.horasInstalacion+' horas</div>':'')
       +(item.marca?'<div style="font-size:11px;color:#777;margin-top:2px;font-weight:600;">'+marcaLabel+'</div>':'')
-      +(item.tipologia?'<div style="font-size:11px;color:#777;margin-top:3px;font-weight:500;">'+item.tipologia+'</div>':'')
     +(licBadgeHTML?'<div style="margin-top:5px;">'+licBadgeHTML+'</div>':'')
+      +'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;text-align:center;vertical-align:top;font-size:13px;font-weight:600;color:#575756;">'+(item.cantidad||1)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;text-align:right;vertical-align:top;white-space:nowrap;">'
+      +'<div style="font-size:12px;color:#575756;">'+fUSD((item.tarifa||0)/(item.cantidad||1))+'</div>'
+      +(d.modoCOP?'':'<div style="font-size:10px;color:#aaa;margin-top:1px;">'+fCOP((item.tarifa||0)/(item.cantidad||1))+'</div>')
       +'</td>'
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;text-align:right;white-space:nowrap;vertical-align:top;">'
       +(d.modoCOP
@@ -1950,8 +1954,10 @@ function generarPDF(d, soloRetornar=false){
     +'<table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #ddd;">'
     +'<thead><tr style="background:#575756;color:#fff;">'
     +'<th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:600;width:28px;">#</th>'
-    +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Descripción del Equipo</th>'
-    +(d.modoCOP?'<th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;width:160px;text-transform:uppercase;letter-spacing:0.5px;">Precio COP</th>':'<th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;width:150px;text-transform:uppercase;letter-spacing:0.5px;">Precio</th>')
+    +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Descripción</th>'
+    +'<th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:600;width:50px;text-transform:uppercase;">Cant.</th>'
+    +'<th style="padding:10px 10px;text-align:right;font-size:10px;font-weight:600;width:110px;text-transform:uppercase;">P. Unit.</th>'
+    +(d.modoCOP?'<th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;width:130px;text-transform:uppercase;">Total COP</th>':'<th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:600;width:130px;text-transform:uppercase;">Total EUR</th>')
     +'</tr></thead>'
     +'<tbody>'+filas+'</tbody></table>'
 
