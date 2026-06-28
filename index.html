@@ -1760,13 +1760,19 @@ async function guardarCotizacion(){
       Items:JSON.stringify(carrito.map(i=>({n:i.nombre,t:i.tarifa,c:i.cantidad,tl:i.tipoLicencia||'',m:'EUR',tce:trm}))),
     };
     let itemCreado;
-    if(modoEdicion){
-      // POST nuevo registro con número de revisión (conserva el original)
-      itemCreado=await graphPost(`/sites/${siteId}/lists/${listIdCotizaciones}/items`,{fields});
-      showToast('✓ Revisión '+numOferta+' guardada (original: '+modoEdicion.original+')','success');
-    } else {
-      itemCreado=await graphPost(`/sites/${siteId}/lists/${listIdCotizaciones}/items`,{fields});
-      showToast('✓ Oferta '+numOferta+' guardada','success');
+    try{
+      if(modoEdicion){
+        itemCreado=await graphPost(`/sites/${siteId}/lists/${listIdCotizaciones}/items`,{fields});
+        showToast('✓ Revisión '+numOferta+' guardada (original: '+modoEdicion.original+')','success');
+      } else {
+        itemCreado=await graphPost(`/sites/${siteId}/lists/${listIdCotizaciones}/items`,{fields});
+        showToast('✓ Oferta '+numOferta+' guardada','success');
+      }
+    }catch(ePost){
+      console.error('Error POST fields:', JSON.stringify(fields));
+      console.error('Error detalle:', ePost.message);
+      showToast('Error guardando: '+ePost.message,'error');
+      throw ePost;
     }
     const itemId=itemCreado?.id||null;
     const clienteInfo=clientesData.find(c=>c.titulo.toLowerCase()===cliente.toLowerCase())||{};
