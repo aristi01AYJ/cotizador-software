@@ -947,16 +947,23 @@ function getGrupoItem(tipologia, marca){
 }
 
 function getLicBadge(tipoLicencia, licenciamiento, marca){
-  const tl=(tipoLicencia||'').toLowerCase();
-  const lic=(licenciamiento||'');
+  const tl=(tipoLicencia||'').toLowerCase().trim();
+  const lic=(licenciamiento||'').trim();
   const esAYJ=(marca||'').toUpperCase()==='AYJ';
-  let badge='';
-  if(tl.includes('perpetua')) badge='<span style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">📄 Lic. Perpetua</span>';
-  else if(tl.includes('suscripcion')||tl.includes('suscripción')) badge='<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔄 Suscripción</span>';
-  else if(tl.includes('servicio')) badge='<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔧 Servicio</span>';
-  if(lic) badge+='<span style="background:#F1F5F9;color:#475569;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block;margin-right:4px">'+lic+'</span>';
-  if(esAYJ&&tl.includes('servicio')) badge+='<span style="background:#FFF7ED;color:#C2410C;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">Servicio AYJ</span>';
-  return badge;
+  let parts=[];
+  if(tl.includes('perpetua'))
+    parts.push('<span style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">📄 Lic. Perpetua</span>');
+  else if(tl.includes('suscripcion')||tl.includes('suscripción'))
+    parts.push('<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">🔄 Suscripción</span>');
+  else if(tl.includes('servicio'))
+    parts.push('<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">🔧 Servicio</span>');
+  else
+    parts.push('<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">📦 Bajo Pedido</span>');
+  if(lic)
+    parts.push('<span style="background:#F1F5F9;color:#475569;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">'+lic+'</span>');
+  if(esAYJ&&(tl.includes('servicio')||!tl))
+    parts.push('<span style="background:#FFF7ED;color:#C2410C;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">Servicio AYJ</span>');
+  return parts.join(' ');
 }
 
 const VENDEDORES={
@@ -3553,16 +3560,23 @@ function getGrupoItem(tipologia, marca){
 }
 
 function getLicBadge(tipoLicencia, licenciamiento, marca){
-  const tl=(tipoLicencia||'').toLowerCase();
-  const lic=(licenciamiento||'');
+  const tl=(tipoLicencia||'').toLowerCase().trim();
+  const lic=(licenciamiento||'').trim();
   const esAYJ=(marca||'').toUpperCase()==='AYJ';
-  let badge='';
-  if(tl.includes('perpetua')) badge='<span style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">📄 Lic. Perpetua</span>';
-  else if(tl.includes('suscripcion')||tl.includes('suscripción')) badge='<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔄 Suscripción</span>';
-  else if(tl.includes('servicio')) badge='<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-right:4px">🔧 Servicio</span>';
-  if(lic) badge+='<span style="background:#F1F5F9;color:#475569;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block;margin-right:4px">'+lic+'</span>';
-  if(esAYJ&&tl.includes('servicio')) badge+='<span style="background:#FFF7ED;color:#C2410C;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">Servicio AYJ</span>';
-  return badge;
+  let parts=[];
+  if(tl.includes('perpetua'))
+    parts.push('<span style="background:#EDE9FE;color:#5B21B6;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">📄 Lic. Perpetua</span>');
+  else if(tl.includes('suscripcion')||tl.includes('suscripción'))
+    parts.push('<span style="background:#DBEAFE;color:#1E3A8A;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">🔄 Suscripción</span>');
+  else if(tl.includes('servicio'))
+    parts.push('<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">🔧 Servicio</span>');
+  else
+    parts.push('<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block">📦 Bajo Pedido</span>');
+  if(lic)
+    parts.push('<span style="background:#F1F5F9;color:#475569;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">'+lic+'</span>');
+  if(esAYJ&&(tl.includes('servicio')||!tl))
+    parts.push('<span style="background:#FFF7ED;color:#C2410C;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block">Servicio AYJ</span>');
+  return parts.join(' ');
 }
 
 const VENDEDORES={
@@ -4362,7 +4376,7 @@ function generarPDF(d, soloRetornar=false){
     const licBadgeHTML=getLicBadge(item.tipoLicencia,item.licenciamiento,item.marca);
     const marcaLabel=(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':(item.marca||'');
     return '<tr>'
-      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;font-size:11px;color:#999;text-align:center;">'+(idxGlobal+1)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;font-size:11px;color:#999;text-align:center;">'+(idx+1)+'</td>'
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;">'
       +'<div style="font-weight:700;font-size:13px;color:#2a2a2a;">'+item.nombre+'</div>'
       +(item.marca?'<div style="font-size:11px;color:#777;margin-top:2px;font-weight:600;">'+marcaLabel+'</div>':'')
