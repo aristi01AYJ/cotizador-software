@@ -1082,9 +1082,8 @@ async function cargarMaquinas(){
     const todos=await graphGetAll(`/sites/${siteId}/lists/${listIdMaquinas}/items?expand=fields&$select=id,fields&$top=200`);
     rawMaquinas=todos.map(i=>{
       const f=i.fields;
-
       let tarifa=0;
-      const tarifaRaw=f.TARIFA||f.TARIFA_SUGERIDO||0;
+      const tarifaRaw=f.TARIFA||0;
       if(tarifaRaw){const clean=String(tarifaRaw).replace(/[^0-9.,]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');tarifa=parseFloat(clean)||0;}
       const _ft=f.Ficha_x0020_Tecnica||f.FichaTecnica||f.Ficha_Tecnica||null;
       const fichaTecnica=_ft?(typeof _ft==='object'?(_ft.Url||''):String(_ft).trim()):'';
@@ -1092,19 +1091,19 @@ async function cargarMaquinas(){
         id:i.id,
         title:(f.Title||'').trim(),
         modelo:(f.Modelo||'').trim(),
-        marca:(f[marcaField]||f.Marca||f.Marca0||f.MO||'').trim(),
-        tipologia:(f[tipologiaField]||f.Tipologia||'').trim(),
+        marca:(f[marcaField]||f.Marca||f.Marca0||'IMOS').trim(),
+        tipologia:(f[tipologiaField]||f.Tipologia||'SOFTWARE').trim(),
+        tipoLicencia:(f.Tipo_licencia||f.TipoLicencia||'').trim(),
+        licenciamiento:(f.Licenciamiento||'').trim(),
         estadoDisp:'DISPONIBLE',
         estadoStock:'Bajo Pedido',
         tarifa,
-        ubicacion:(f.Ubicaci_x00f3_n||f.Ubicacion||'').trim(),
-        descripcion:(f.Descripci_x00f3_n||f.Descripcion||f.Descripci_n||'').trim(),
+        descripcion:(f.Modelo||f.Descripci_x00f3_n||f.Descripcion||'').trim(),
         fichaTecnica,
-        ytVideo:(()=>{const v=f.YTvideo||null;return v?(typeof v==='object'?(v.Url||''):String(v).trim()):'';})(),
-        observaciones:(f.Observaciones||'').trim(),
-        horasInstalacion:parseFloat(String(f.HorasInstalacion||f.Horas_Instalacion||'0').replace(',','.')||0),
+        ytVideo:(()=>{const v=f.YTvideo||f.YTVideo||null;return v?(typeof v==='object'?(v.Url||''):String(v).trim()):'';})(),
+        horasInstalacion:0,moneda:'EUR',
       };
-    }).filter(m=>m.estadoDisp==='DISPONIBLE'||m.estadoDisp==='BAJO PEDIDO');
+    }).filter(m=>m.title);
     const marcas=[...new Set(rawMaquinas.map(m=>m.marca).filter(Boolean))].sort();
     const sel=document.getElementById('filtroMarca');
     sel.innerHTML='<option value="">Todas las marcas</option>';
@@ -1133,6 +1132,7 @@ function procesarCatalogo(){
     if(m.ytVideo&&!mapa[key].ytVideo)mapa[key].ytVideo=m.ytVideo;
     if(m.fichaTecnica&&!mapa[key].fichaTecnica)mapa[key].fichaTecnica=m.fichaTecnica;
     if(m.tipoLicencia&&!mapa[key].tipoLicencia)mapa[key].tipoLicencia=m.tipoLicencia;
+    if(m.licenciamiento&&!mapa[key].licenciamiento)mapa[key].licenciamiento=m.licenciamiento;
   });
   grupos=Object.values(mapa).sort((a,b)=>a.title.localeCompare(b.title));
 }
@@ -1302,6 +1302,7 @@ function renderCarrito(){
   <div class="item-name">${item.nombre}</div>
   <div class="item-sub" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">
     <span style="font-weight:600;color:#575756">${(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':item.marca||''}</span>
+    ${item.modelo?'<span style="color:var(--text3)">·</span><span style="font-size:11px;color:var(--text2)">'+item.modelo+'</span>':''}
   </div>
   <div style="margin-top:4px">${badge}</div>
 </td>`
@@ -3738,6 +3739,7 @@ function procesarCatalogo(){
     if(m.ytVideo&&!mapa[key].ytVideo)mapa[key].ytVideo=m.ytVideo;
     if(m.fichaTecnica&&!mapa[key].fichaTecnica)mapa[key].fichaTecnica=m.fichaTecnica;
     if(m.tipoLicencia&&!mapa[key].tipoLicencia)mapa[key].tipoLicencia=m.tipoLicencia;
+    if(m.licenciamiento&&!mapa[key].licenciamiento)mapa[key].licenciamiento=m.licenciamiento;
   });
   grupos=Object.values(mapa).sort((a,b)=>a.title.localeCompare(b.title));
 }
@@ -3907,6 +3909,7 @@ function renderCarrito(){
   <div class="item-name">${item.nombre}</div>
   <div class="item-sub" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">
     <span style="font-weight:600;color:#575756">${(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':item.marca||''}</span>
+    ${item.modelo?'<span style="color:var(--text3)">·</span><span style="font-size:11px;color:var(--text2)">'+item.modelo+'</span>':''}
   </div>
   <div style="margin-top:4px">${badge}</div>
 </td>`
