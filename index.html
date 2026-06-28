@@ -391,22 +391,22 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
         </div>
       </div>
       <div class="footer">
-        <div class="field-group">
-          <label>Descuento (%)</label>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <input type="number" id="descInput" value="0" min="0" max="20" style="width:60px"
-              oninput="validarDescuento(this)">
-            <span style="font-size:11px;color:var(--text2)" id="descMaxLabel">máx 20%</span>
-            <button onclick="solicitarClaveDesc()" id="descLockBtn" title="Desbloquear descuento especial" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 2px;line-height:1">🔒</button>
-            <button onclick="toggleMGPanel()" id="mgBtn" title="Ver Margen y Comisión" style="background:#f0f4e8;border:1.5px solid var(--green);color:var(--green-dark);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.5px">MG</button>
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;margin-left:4px;">
+        <!-- Descuento -->
+        <div style="flex-shrink:0">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:2px">Descuento (%)</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" id="descInput" value="0" min="0" max="20" style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit" oninput="validarDescuento(this)">
+            <span style="font-size:10px;color:var(--text2)" id="descMaxLabel">máx 20%</span>
+            <button onclick="solicitarClaveDesc()" id="descLockBtn" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;line-height:1">🔒</button>
+            <button onclick="toggleMGPanel()" id="mgBtn" style="background:#f0f4e8;border:1.5px solid var(--green);color:var(--green-dark);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">MG</button>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;cursor:pointer">
               <input type="checkbox" id="descEspecialChk" onchange="toggleDescEspecial(this.checked)" style="cursor:pointer">
-              <span id="descEspecialLabel" style="color:var(--text2)">+3% especial</span>
+              <span id="descEspecialLabel" style="color:var(--text2);white-space:nowrap">+3% especial</span>
             </label>
-            <span id="descTotalBadge" style="display:none;font-size:10px;padding:2px 7px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:600"></span>
+            <span id="descTotalBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:600"></span>
           </div>
-          <div id="descCausalWrap" style="display:none;margin-top:6px">
-            <select id="descEspecialCausal" onchange="actualizarDescBadge()" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #F59E0B;border-radius:var(--radius);background:#fffbf0;color:#854F0B;font-family:inherit">
+          <div id="descCausalWrap" style="display:none;margin-top:4px;width:220px">
+            <select id="descEspecialCausal" onchange="actualizarDescBadge()" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid #F59E0B;border-radius:var(--radius);background:#fffbf0;color:#854F0B;font-family:inherit">
               <option value="">— Causal del descuento especial —</option>
               <option>Compra de Combo</option>
               <option>Pago 100% anticipado</option>
@@ -414,71 +414,31 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
               <option>Aprobado Gerencia General</option>
               <option value="__custom__">✏️ Personalizado...</option>
             </select>
-            <input type="text" id="descEspecialCausalCustom" placeholder="Describe la causal..." style="display:none;margin-top:4px;width:100%;font-size:12px;padding:5px 8px;border:1px solid #F59E0B;border-radius:var(--radius);font-family:inherit">
+            <input type="text" id="descEspecialCausalCustom" placeholder="Describe la causal..." style="display:none;margin-top:3px;width:100%;font-size:11px;padding:3px 6px;border:1px solid #F59E0B;border-radius:var(--radius);font-family:inherit">
           </div>
         </div>
-        <div id="mgPanel" style="display:none;grid-column:1/-1;background:#f5f7f0;border:1.5px solid var(--green);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:4px">
+        <div id="mgPanel" style="display:none;position:absolute;bottom:60px;left:14px;right:14px;background:#f5f7f0;border:1.5px solid var(--green);border-radius:var(--radius-lg);padding:14px 16px;z-index:10;box-shadow:0 -4px 20px rgba(0,0,0,0.1)">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:12px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:0.5px">🔒 Margen y Comisión — Solo uso interno</span>
             <button onclick="toggleMGPanel()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3)">×</button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px">
-            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Descuento</div>
-              <div style="font-size:18px;font-weight:800;color:var(--gris)" id="mgDescPct">0%</div>
-            </div>
-            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Margen</div>
-              <div style="font-size:18px;font-weight:800;color:var(--green-dark)" id="mgMargenPct">50.000%</div>
-            </div>
-            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Comisión %</div>
-              <div style="font-size:18px;font-weight:800;color:#3B82F6" id="mgComPct">7.500%</div>
-            </div>
-            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Comisión USD</div>
-              <div style="font-size:15px;font-weight:800;color:#3B82F6" id="mgComUSD">USD 0</div>
-            </div>
-            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text2);margin-bottom:4px">Comisión COP</div>
-              <div style="font-size:15px;font-weight:800;color:#3B82F6" id="mgComCOP">COP 0</div>
-            </div>
+            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Descuento</div><div style="font-size:18px;font-weight:800;color:var(--gris)" id="mgDescPct">0%</div></div>
+            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Margen</div><div style="font-size:18px;font-weight:800;color:var(--green-dark)" id="mgMargenPct">50.000%</div></div>
+            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Comisión %</div><div style="font-size:18px;font-weight:800;color:#3B82F6" id="mgComPct">7.500%</div></div>
+            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Comisión EUR</div><div style="font-size:15px;font-weight:800;color:#3B82F6" id="mgComUSD">EUR 0</div></div>
+            <div style="background:#fff;border-radius:var(--radius);padding:10px;text-align:center;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text2);margin-bottom:4px">Comisión COP</div><div style="font-size:15px;font-weight:800;color:#3B82F6" id="mgComCOP">COP 0</div></div>
           </div>
-          <div style="font-size:11px;color:var(--text2);background:#fff;border-radius:var(--radius);padding:8px 12px;border:1px solid var(--border)">
-            Base de cálculo: <strong id="mgBaseUSD">USD 0</strong> (subtotal antes de IVA y flete)
-          </div>
+          <div style="font-size:11px;color:var(--text2);background:#fff;border-radius:var(--radius);padding:8px 12px;border:1px solid var(--border)">Base de cálculo: <strong id="mgBaseUSD">EUR 0</strong></div>
         </div>
-        <div class="field-group">
-          <div class="total-item">
-            <span class="total-label">Subtotal</span>
-            <span class="total-val" id="tSubUSD">USD 0</span>
-            <span class="total-val sub2" id="tSubCOP">COP 0</span>
-          </div>
-          <div class="total-item">
-            <span class="total-label">Descuento</span>
-            <span class="total-val" id="tDescUSD" style="color:#e24b4a">-USD 0</span>
-            <span class="total-val sub2" id="tDescCOP" style="color:#e24b4a">-COP 0</span>
-          </div>
-          <div class="total-item" id="tBaseIvaWrap" style="border-top:1px dashed var(--border);padding-top:4px;margin-top:2px">
-            <span class="total-label" style="color:var(--text);font-weight:600">Precio antes de IVA</span>
-            <span class="total-val" id="tBaseIvaUSD" style="color:var(--text);font-weight:600">USD 0</span>
-            <span class="total-val sub2" id="tBaseIvaCOP" style="color:var(--text2)">COP 0</span>
-          </div>
-          <div class="total-item">
-            <span class="total-label">IVA 19%</span>
-            <span class="total-val" id="tIVAUSD" style="color:#666">USD 0</span>
-            <span class="total-val sub2" id="tIVACOP" style="color:#666">COP 0</span>
-          </div>
-          <div class="total-item">
-
-          </div>
-          <div class="total-item">
-            <span class="total-label">Total oferta</span>
-            <span class="total-val big" id="tTotalUSD">USD 0</span>
-            <span class="total-val big2" id="tTotalCOP">COP 0</span>
-          </div>
+        <!-- Totales -->
+        <div class="totales">
+          <div class="total-item"><span class="total-label">Subtotal</span><span class="total-val" id="tSubUSD">EUR 0</span><span class="total-val sub2" id="tSubCOP">COP 0</span></div>
+          <div class="total-item"><span class="total-label">Descuento</span><span class="total-val" id="tDescUSD" style="color:#e24b4a">-EUR 0</span><span class="total-val sub2" id="tDescCOP" style="color:#e24b4a">-COP 0</span></div>
+          <div class="total-item" id="tBaseIvaWrap" style="border-top:1px dashed var(--border);padding-top:4px;margin-top:2px"><span class="total-label" style="font-weight:600">Precio s/IVA</span><span class="total-val" id="tBaseIvaUSD" style="font-weight:600">EUR 0</span><span class="total-val sub2" id="tBaseIvaCOP">COP 0</span></div>
+          <div class="total-item"><span class="total-label">IVA 19%</span><span class="total-val" id="tIVAUSD" style="color:#666">EUR 0</span><span class="total-val sub2" id="tIVACOP" style="color:#666">COP 0</span></div>
+          <div class="total-item"><span class="total-label">Total oferta</span><span class="total-val big" id="tTotalUSD">EUR 0</span><span class="total-val big2" id="tTotalCOP">COP 0</span></div>
           <button class="btn-sec" onclick="nuevaCotizacion()"><i class="ti ti-plus"></i> Nueva Cotización</button>
-          <button class="btn-sec" onclick="abrirItemLibre()" style="border-color:var(--amber);color:#92400E" title="Agregar ítem personalizado"><i class="ti ti-pencil-plus"></i> Ítem libre</button>
           <button class="btn-primary" id="btnGuardar" onclick="guardarCotizacion()"><i class="ti ti-device-floppy"></i> Guardar y PDF</button>
         </div>
       </div>
