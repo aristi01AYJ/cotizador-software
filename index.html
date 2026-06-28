@@ -1108,7 +1108,7 @@ async function cargarMaquinas(){
         descripcion:(f.Modelo||f.Descripci_x00f3_n||f.Descripcion||'').trim(),
         fichaTecnica,
         ytVideo:(()=>{const v=f.YTvideo||f.YTVideo||null;return v?(typeof v==='object'?(v.Url||''):String(v).trim()):'';})(),
-        horasInstalacion:0,moneda:'EUR',
+        horasInstalacion:parseFloat(String(f.HorasInstalacion||f.Horas_Instalacion||'0').replace(',','.'))||0,moneda:'EUR',
       };
     }).filter(m=>m.title);
     const marcas=[...new Set(rawMaquinas.map(m=>m.marca).filter(Boolean))].sort();
@@ -1135,11 +1135,12 @@ function procesarCatalogo(){
       tipologia:m.tipologia,tipoLicencia:m.tipoLicencia||'',licenciamiento:m.licenciamiento||'',
       tarifa:m.tarifa,descripcion:m.descripcion,
       fichaTecnica:m.fichaTecnica,ytVideo:m.ytVideo||'',
-      stockCount:99,importCount:0,horasInstalacion:0,moneda:'EUR'};
+      stockCount:99,importCount:0,horasInstalacion:m.horasInstalacion||0,moneda:'EUR'};
     if(m.ytVideo&&!mapa[key].ytVideo)mapa[key].ytVideo=m.ytVideo;
     if(m.fichaTecnica&&!mapa[key].fichaTecnica)mapa[key].fichaTecnica=m.fichaTecnica;
     if(m.tipoLicencia&&!mapa[key].tipoLicencia)mapa[key].tipoLicencia=m.tipoLicencia;
     if(m.licenciamiento&&!mapa[key].licenciamiento)mapa[key].licenciamiento=m.licenciamiento;
+    if(m.horasInstalacion&&!mapa[key].horasInstalacion)mapa[key].horasInstalacion=m.horasInstalacion;
   });
   grupos=Object.values(mapa).sort((a,b)=>a.title.localeCompare(b.title));
 }
@@ -1281,7 +1282,7 @@ function buildBpCard(m){
 function agregarGrupo(key,tipo){
   const g=grupos.find(x=>x.key===key);
   if(!g||carrito.some(i=>i.grupoKey===key&&i.tipo===tipo))return;
-  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',licenciamiento:g.licenciamiento||'',tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
+  carrito.push({id:'g_'+key+'_'+tipo,grupoKey:key,tipo:'pedido',nombre:g.title,marca:g.marca,modelo:g.modelo,tipologia:g.tipologia||'',tipoLicencia:g.tipoLicencia||'',licenciamiento:g.licenciamiento||'',horasInstalacion:g.horasInstalacion||0,tarifa:g.tarifa,moneda:'EUR',descripcion:g.descripcion,fichaTecnica:g.fichaTecnica,ytVideo:g.ytVideo||'',cantidad:1,stockCount:99,importCount:0});
   renderCarrito();renderCatalogo();calcTotales();showToast('Agregado: '+g.title,'success');
 }
 function quitarGrupo(key,tipo){carrito=carrito.filter(i=>!(i.grupoKey===key&&i.tipo===tipo));renderCarrito();renderCatalogo();calcTotales();}
@@ -1311,7 +1312,7 @@ function renderCarrito(){
     <span style="font-weight:600;color:#575756">${(item.marca||'').toUpperCase()==='AYJ'?'AYJ — Servicio prestado por AYJ':item.marca||''}</span>
     ${item.modelo?'<span style="color:var(--text3)">·</span><span style="font-size:11px;color:var(--text2)">'+item.modelo+'</span>':''}
   </div>
-  <div style="margin-top:4px">${badge}</div>
+  <div style="margin-top:4px">${badge}${(item.tipoLicencia||'').toLowerCase().includes('servicio')&&item.horasInstalacion?'<span style="background:#F0FDF4;color:#166534;font-size:10px;padding:2px 7px;border-radius:20px;display:inline-block;margin-left:4px">⏱ '+item.horasInstalacion+' horas</span>':''}</div>
 </td>`
       +`<td style="vertical-align:middle"><span class="item-tipo-badge" style="background:var(--bg);color:var(--text2);font-size:10px">${item.tipologia||'—'}</span></td>`
       +`<td style="text-align:center;vertical-align:middle;white-space:nowrap">${pdfCell}${ytCell}</td>`
@@ -1776,6 +1777,7 @@ function generarPDF(d, soloRetornar=false){
       +'<td style="padding:8px 10px;border-bottom:1px solid #ececec;">'
       +'<div style="font-weight:700;font-size:13px;color:#2a2a2a;">'+item.nombre+'</div>'
       +(item.modelo?'<div style="font-size:11px;color:#555;margin-top:3px;line-height:1.4;">'+item.modelo+'</div>':'')
+      +((item.tipoLicencia||'').toLowerCase().includes('servicio')&&item.horasInstalacion?'<div style="font-size:11px;color:#166534;font-weight:600;margin-top:4px;">⏱ '+item.horasInstalacion+' horas</div>':'')
       +(item.marca?'<div style="font-size:11px;color:#777;margin-top:2px;font-weight:600;">'+marcaLabel+'</div>':'')
       +(item.tipologia?'<div style="font-size:11px;color:#777;margin-top:3px;font-weight:500;">'+item.tipologia+'</div>':'')
     +(licBadgeHTML?'<div style="margin-top:5px;">'+licBadgeHTML+'</div>':'')
