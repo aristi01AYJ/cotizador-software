@@ -1388,16 +1388,19 @@ function calcTotales(){
   const totalCOP=Math.round(totalUSD*trm);
   document.getElementById('tSubUSD').textContent=fmtUSD(subUSD);
   document.getElementById('tSubCOP').textContent=fmtCOP(subUSD);
-  document.getElementById('tDescUSD').textContent='-'+fmtUSD(descUSD);
-  document.getElementById('tDescCOP').textContent='-'+fmtCOP(descUSD);
-  // Precio antes de IVA = subtotal - descuento
-  const baseIvaUSD=baseUSD;
-  document.getElementById('tBaseIvaUSD').textContent=fmtUSD(baseIvaUSD);
-  document.getElementById('tBaseIvaCOP').textContent=fmtCOP(baseIvaUSD);
+  // Mostrar descuentos diferenciados
+  const descLabel=[]
+  if(descLicUSD>0) descLabel.push('Lic: -'+fmtUSD(descLicUSD));
+  if(descAYJUSD>0) descLabel.push('AYJ: -'+fmtUSD(descAYJUSD));
+  document.getElementById('tDescUSD').textContent=descLabel.length?descLabel.join(' | '):'-'+fmtUSD(0);
+  document.getElementById('tDescCOP').textContent=descUSD>0?'-'+fmtCOP(descUSD):'';
+  // Precio antes de IVA
+  document.getElementById('tBaseIvaUSD').textContent=fmtUSD(baseUSD);
+  document.getElementById('tBaseIvaCOP').textContent=fmtCOP(baseUSD);
   document.getElementById('tIVAUSD').textContent=fmtUSD(ivaUSD);
   document.getElementById('tIVACOP').textContent=fmtCOP(ivaUSD);
   const fleteLabel=document.getElementById('fleteUSDLabel');
-  if(fleteLabel) fleteLabel.textContent=fleteCOP>0?'≈ '+fmtUSD(fleteUSD):'';
+  if(fleteLabel) fleteLabel.textContent='';
   document.getElementById('tTotalUSD').textContent=fmtUSD(totalUSD);
   document.getElementById('tTotalCOP').textContent='COP '+totalCOP.toLocaleString('es-CO');
   calcMG();
@@ -1883,15 +1886,19 @@ function generarPDF(d, soloRetornar=false){
     +'</div>'
     +'</div>';
 
-  const descBase=d.descBase||d.desc||0;
-  const tieneEspecial=d.descEspecial||false;
-  const descRow=(d.desc||0)>0
-    ?'<tr><td style="padding:5px 10px;color:#c0392b;border-bottom:1px solid #eee;">Descuento ('+(d.desc||0)+'%)'+(d.descEspecial?' <span style="font-size:9px;padding:1px 6px;border-radius:10px;background:#FAEEDA;color:#854F0B;">+3% especial: '+d.causalEspecial+'</span>':'')+(d.desc>20?' <span style="font-size:9px;padding:1px 6px;border-radius:10px;background:#FCEBEB;color:#A32D2D;">Aut. Gerencia</span>':'')+'</td><td style="padding:5px 10px;text-align:right;color:#c0392b;border-bottom:1px solid #eee;">'+(d.modoCOP?'-'+fCOP(d.descUSD||0):'-'+fUSD(d.descUSD||0)+'<br><span style="font-size:10px;">-'+fCOP(d.descUSD||0)+'</span>')+'</td></tr>'
-    :'';
-  const fleteUSDpdf=d.trm>0?(d.fleteCOP||0)/d.trm:0;
-  const fleteRow=(d.fleteCOP||0)>0
-    ?'<tr><td style="padding:5px 10px;color:#666;border-bottom:1px solid #eee;">Flete nacional</td><td style="padding:5px 10px;text-align:right;border-bottom:1px solid #eee;"><div style="font-size:12px;font-weight:500;">COP '+Math.round(d.fleteCOP||0).toLocaleString('es-CO')+'</div><div style="font-size:10px;color:#999;">≈ '+fUSD(fleteUSDpdf)+'</div></td></tr>'
-    :'';
+  // Calcular descuentos por grupo para el PDF
+  const itemsLicPDF=d.items.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Software');
+  const itemsAYJpdf=d.items.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios AYJ');
+  const subLicPDF=itemsLicPDF.reduce((s,i)=>s+(i.tarifa||0),0);
+  const subAYJpdf=itemsAYJpdf.reduce((s,i)=>s+(i.tarifa||0),0);
+  const descLicPDF=subLicPDF*(d.desc||0)/100;
+  const descAYJpdf=subAYJpdf*(d.descAYJpct||0)/100;
+
+  const descRow=''
+    +((d.desc||0)>0?'<tr><td style="padding:5px 10px;color:#c0392b;border-bottom:1px solid #eee;">Desc. Licencias ('+(d.desc||0)+'%)'+(d.descEspecial?' <span style="font-size:9px;padding:1px 5px;border-radius:10px;background:#FAEEDA;color:#854F0B;">+3% especial</span>':'')+'</td><td style="padding:5px 10px;text-align:right;color:#c0392b;border-bottom:1px solid #eee;">-'+fUSD(descLicPDF)+'<br><span style="font-size:10px;">-'+fCOP(descLicPDF)+'</span></td></tr>':'')
+    +((d.descAYJpct||0)>0?'<tr><td style="padding:5px 10px;color:#C2410C;border-bottom:1px solid #eee;">Desc. Servicios AYJ ('+(d.descAYJpct||0)+'%)</td><td style="padding:5px 10px;text-align:right;color:#C2410C;border-bottom:1px solid #eee;">-'+fUSD(descAYJpdf)+'<br><span style="font-size:10px;">-'+fCOP(descAYJpdf)+'</span></td></tr>':'');
+
+  const fleteRow='';
 
   const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     +'<title>'+d.numOferta+' - '+d.cliente+'</title>'
