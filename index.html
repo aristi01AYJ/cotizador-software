@@ -391,23 +391,32 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
         </div>
       </div>
       <div class="footer">
-        <!-- Descuento -->
-        <div style="flex-shrink:0">
-          <div style="font-size:10px;color:var(--text2);margin-bottom:2px">Descuento (%)</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input type="number" id="descInput" value="0" min="0" max="20" style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit" oninput="validarDescuento(this)">
-            <span style="font-size:10px;color:var(--text2)" id="descMaxLabel">máx 20%</span>
-            <button onclick="solicitarClaveDesc()" id="descLockBtn" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;line-height:1">🔒</button>
-            <button onclick="toggleMGPanel()" id="mgBtn" style="background:#f0f4e8;border:1.5px solid var(--green);color:var(--green-dark);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">MG</button>
+        <!-- Descuentos diferenciados -->
+        <div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;color:#5B21B6;font-weight:600;width:90px">📄 Licencias</span>
+            <input type="number" id="descInput" value="0" min="0" max="20" style="width:44px;padding:3px 5px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit" oninput="validarDescuento(this)">
+            <span style="font-size:10px;color:var(--text2)" id="descMaxLabel">%</span>
+            <button onclick="solicitarClaveDesc()" id="descLockBtn" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:0;line-height:1">🔒</button>
+            <button onclick="toggleMGPanel()" id="mgBtn" style="background:#f0f4e8;border:1.5px solid var(--green);color:var(--green-dark);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">MG</button>
             <label style="display:flex;align-items:center;gap:3px;font-size:10px;cursor:pointer">
               <input type="checkbox" id="descEspecialChk" onchange="toggleDescEspecial(this.checked)" style="cursor:pointer">
-              <span id="descEspecialLabel" style="color:var(--text2);white-space:nowrap">+3% especial</span>
+              <span id="descEspecialLabel" style="color:var(--text2);white-space:nowrap">+3%</span>
             </label>
-            <span id="descTotalBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:600"></span>
+            <span id="descTotalBadge" style="display:none;font-size:10px;padding:1px 5px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:600"></span>
           </div>
-          <div id="descCausalWrap" style="display:none;margin-top:4px;width:220px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;color:#C2410C;font-weight:600;width:90px">🔧 Serv. AYJ</span>
+            <input type="number" id="descAYJ" value="0" min="0" max="30" style="width:44px;padding:3px 5px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:inherit" oninput="calcTotales()">
+            <span style="font-size:10px;color:var(--text2)">%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;color:var(--text3);font-weight:600;width:90px">🔧 Serv. imos</span>
+            <span style="font-size:11px;color:var(--text3);background:var(--bg);padding:2px 8px;border-radius:var(--radius);border:1px solid var(--border)">0% fijo</span>
+          </div>
+          <div id="descCausalWrap" style="display:none;margin-top:2px;width:200px">
             <select id="descEspecialCausal" onchange="actualizarDescBadge()" style="width:100%;font-size:11px;padding:3px 6px;border:1px solid #F59E0B;border-radius:var(--radius);background:#fffbf0;color:#854F0B;font-family:inherit">
-              <option value="">— Causal del descuento especial —</option>
+              <option value="">— Causal —</option>
               <option>Compra de Combo</option>
               <option>Pago 100% anticipado</option>
               <option>Promo evento</option>
@@ -1356,15 +1365,26 @@ function removerItem(i){carrito.splice(i,1);renderCarrito();calcTotales();render
 
 function calcTotales(){
   const desc=getDescuento();
-  const descEspecial=document.getElementById('descEspecialChk').checked;
+  const descAYJpct=parseFloat(document.getElementById('descAYJ')?.value)||0;
   const fleteCOP=0;
   const ivaPct=19;
-  const subUSD=carrito.reduce((s,i)=>s+i.tarifa,0);
-  const descUSD=subUSD*desc/100;
+  // Separar por grupo
+  const itemsLic=carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Software');
+  const itemsAYJ=carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios AYJ');
+  const itemsImos=carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios imos');
+  const subLic=itemsLic.reduce((s,i)=>s+i.tarifa,0);
+  const subAYJ=itemsAYJ.reduce((s,i)=>s+i.tarifa,0);
+  const subImos=itemsImos.reduce((s,i)=>s+i.tarifa,0);
+  const subUSD=subLic+subAYJ+subImos;
+  // Descuentos por grupo
+  const descLicUSD=subLic*desc/100;
+  const descAYJUSD=subAYJ*descAYJpct/100;
+  const descImosUSD=0; // siempre 0
+  const descUSD=descLicUSD+descAYJUSD+descImosUSD;
   const baseUSD=subUSD-descUSD;
   const ivaUSD=baseUSD*ivaPct/100;
-  const fleteUSD=trm>0?fleteCOP/trm:0;
-  const totalUSD=baseUSD+ivaUSD+fleteUSD;
+  const fleteUSD=0;
+  const totalUSD=baseUSD+ivaUSD;
   const totalCOP=Math.round(totalUSD*trm);
   document.getElementById('tSubUSD').textContent=fmtUSD(subUSD);
   document.getElementById('tSubCOP').textContent=fmtCOP(subUSD);
@@ -1695,6 +1715,7 @@ async function guardarCotizacion(){
       Estado:'Enviada',
       Vendedor:vendedor||currentUserName||'Sin vendedor',
       Descuento:desc,
+      DescuentoAYJ:descAYJpct||0,
       Flete:fleteCOP||0,
       Garantia:garantia,
       CondicionPago:condPago,
@@ -1721,7 +1742,7 @@ async function guardarCotizacion(){
     const clienteInfo=clientesData.find(c=>c.titulo.toLowerCase()===cliente.toLowerCase())||{};
     // Generar HTML, subir a SharePoint, luego abrir con link
     const voltaje=getVoltaje();
-    const htmlSinLink=generarPDF({numOferta,idSynergy,cliente,clienteInfo,vendedor,condPago,cuotasPago,garantia,validez,entrega,voltaje,obs,desc,descEspecial,causalEspecial:getCausalEspecial(),ivaPct,fleteCOP,subUSD,descUSD,ivaUSD,totalUSD,totalCOP,modoCOP,trm,items:[...carrito]},true);
+    const htmlSinLink=generarPDF({numOferta,idSynergy,cliente,clienteInfo,vendedor,condPago,cuotasPago,garantia,validez,entrega,voltaje,obs,desc,descAYJpct,descEspecial,causalEspecial:getCausalEspecial(),ivaPct,fleteCOP,subUSD,descUSD,ivaUSD,totalUSD,totalCOP,modoCOP,trm,items:[...carrito]},true);
     const linkPDF=await guardarHTMLEnSharePoint(numOferta, htmlSinLink, cliente, idSynergy);
     // Actualizar LinkPDF en el registro
     if(itemCreado?.id&&linkPDF){
@@ -1731,7 +1752,7 @@ async function guardarCotizacion(){
            body:JSON.stringify({LinkPDF:linkPDF})});
       }catch(ep){console.warn('Error actualizando LinkPDF:',ep);}
     }
-    const htmlFinal=generarPDF({numOferta,idSynergy,cliente,clienteInfo,vendedor,condPago,cuotasPago,garantia,validez,entrega,voltaje,obs,desc,descEspecial,causalEspecial:getCausalEspecial(),ivaPct,fleteCOP,subUSD,descUSD,ivaUSD,totalUSD,totalCOP,modoCOP,trm,items:[...carrito],linkSharePoint:linkPDF},true);
+    const htmlFinal=generarPDF({numOferta,idSynergy,cliente,clienteInfo,vendedor,condPago,cuotasPago,garantia,validez,entrega,voltaje,obs,desc,descAYJpct,descEspecial,causalEspecial:getCausalEspecial(),ivaPct,fleteCOP,subUSD,descUSD,ivaUSD,totalUSD,totalCOP,modoCOP,trm,items:[...carrito],linkSharePoint:linkPDF},true);
     const pdfWin=window.open('','_blank','width=960,height=860');
     if(pdfWin){pdfWin.document.write(htmlFinal);pdfWin.document.close();}
     // Actualizar LinkPDF en la lista
