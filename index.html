@@ -1687,6 +1687,7 @@ async function guardarCotizacion(){
   const garantia='';
   const obs=document.getElementById('obsInput').value.trim();
   const desc=getDescuento();
+  const descAYJpct=parseFloat(document.getElementById('descAYJ')?.value)||0;
   const descEspecial=document.getElementById('descEspecialChk').checked;
   const fleteCOP=0;
   const ivaPct=19;
