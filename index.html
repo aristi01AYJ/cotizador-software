@@ -1221,10 +1221,10 @@ async function resolverSite(){
     const lists=await graphGet(`/sites/${siteId}/lists?$select=id,displayName`);
     lists.value.forEach(l=>{
       const n=l.displayName.toLowerCase();
-      if(n.includes('software_imos')||n.includes('software'))listIdMaquinas=l.id;
-      else if(n.includes('cliente'))listIdClientes=l.id;
-      else if(n.includes('cotizaciones_sw')||n.includes('cotizacion_sw'))listIdCotizaciones=l.id;
-      else if(n.includes('liquidaci'))listIdLiquidaciones=l.id;
+      if(n.includes('software_imos')) listIdMaquinas=l.id;
+      if(n.includes('cliente')) listIdClientes=l.id;
+      if(n==='cotizaciones_sw') listIdCotizaciones=l.id;
+      if(n.includes('liquidaci')) listIdLiquidaciones=l.id;
     });
   }catch(e){showToast('Error conectando SharePoint: '+e.message,'error');}
 }
