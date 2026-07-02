@@ -2079,7 +2079,7 @@ function generarPDF(d, soloRetornar=false){
   const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     +'<title>'+d.numOferta+' - '+d.cliente+'</title>'
     +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",Arial,sans-serif;font-size:13px;color:#2a2a2a;background:#fff;padding:32px 40px;max-width:880px;margin:0 auto}'
-    +'@media print{body{padding:0}.no-print{display:none!important}@page{margin:12mm 14mm;size:A4}}'
+    +'@media print{body{padding:0}.no-print{display:none!important}@page{margin:12mm 14mm;size:A4}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}}'
     +'</style></head><body>'
 
     +'<div class="no-print" style="background:#575756;color:#fff;padding:10px 20px;margin:-32px -40px 24px;display:flex;align-items:center;gap:12px;">'
@@ -2160,6 +2160,8 @@ function generarPDF(d, soloRetornar=false){
     +'<td style="padding:0 12px;border-right:1px solid #ddd;vertical-align:top;"><strong style="color:#575756;">CAT</strong><br>Centro de Asistencia Técnica<br>Tel: 313.391.67.95<br><a href="mailto:cat@ayj.com.co" style="color:#80A61B;text-decoration:none;">cat@ayj.com.co</a></td>'
     +'<td style="padding:0 0 0 12px;vertical-align:top;text-align:right;"><a href="https://www.ayj.com.co" target="_blank" style="color:#80A61B;text-decoration:none;font-weight:700;font-size:10px;">www.ayj.com.co</a><br><span style="color:#aaa;font-size:8px;">Lunes a viernes 7:30–12:30 / 13:30–17:00</span>'+(d.idSynergy?'<br><span style="color:#575756;font-size:9px;font-weight:700;">Synergy: '+d.idSynergy+'</span>':'')+'</td>'
     +'</tr></table></div>'
+    +'<div style="page-break-before:always;width:100%;margin:0;padding:0;"><img src="https://aristi01ayj.github.io/cotizador-software/partners.jpg" style="width:100%;height:auto;display:block;"></div>'
+    +'<div style="page-break-before:always;width:100%;margin:0;padding:0;"><img src="https://aristi01ayj.github.io/cotizador-software/somos.jpg" style="width:100%;height:auto;display:block;"></div>'
 
     +condiciones;
   return html;
