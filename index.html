@@ -499,12 +499,12 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
     </div>
 
     <div id="clientesView" style="display:none;flex:1;flex-direction:column;overflow:hidden;background:var(--bg)">
-      <!-- Header fijo -->
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:#fff;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;flex-shrink:0">
-        <strong style="font-size:15px;align-self:center">Clientes</strong>
+      <!-- Header -->
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:#fff;display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex-shrink:0">
+        <strong style="font-size:15px">Clientes</strong>
         <div style="position:relative">
           <i class="ti ti-search" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
-          <input type="text" id="clientesBuscador" placeholder="Buscar por nombre, ciudad, email..." oninput="renderTablaClientes()" style="padding:6px 10px 6px 28px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:280px;font-family:inherit">
+          <input type="text" id="clientesBuscador" placeholder="Buscar cliente..." oninput="renderTablaClientes()" style="padding:6px 10px 6px 28px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:220px;font-family:inherit">
         </div>
         <select id="clientesFiltCiudad" onchange="renderTablaClientes()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
           <option value="">Todas las ciudades</option>
@@ -512,17 +512,26 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
         <select id="clientesOrden" onchange="renderTablaClientes()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
           <option value="nombre">Por Nombre</option>
           <option value="ciudad">Por Ciudad</option>
-          <option value="contacto">Por Contacto</option>
         </select>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button class="btn-sec" onclick="cargarClientes(true)"><i class="ti ti-refresh"></i></button>
           <button class="btn-primary" onclick="abrirModalCliente()"><i class="ti ti-user-plus"></i> Nuevo Cliente</button>
         </div>
       </div>
-      <!-- Listado scrolleable -->
-      <div style="flex:1;overflow-y:auto;padding:16px 20px">
-        <div id="clientesTablaWrap">
-          <div class="loading-list"><span class="spinner dark"></span> Cargando...</div>
+      <!-- Layout maestro/detalle -->
+      <div style="flex:1;display:flex;overflow:hidden">
+        <!-- Lista de clientes -->
+        <div style="width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:#fff">
+          <div id="clientesTablaWrap">
+            <div class="loading-list"><span class="spinner dark"></span> Cargando...</div>
+          </div>
+        </div>
+        <!-- Panel detalle: contactos -->
+        <div style="flex:1;overflow-y:auto;background:var(--bg);padding:20px" id="clienteDetallePanel">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3)">
+            <i class="ti ti-users" style="font-size:48px;margin-bottom:12px;opacity:0.3"></i>
+            <div style="font-size:14px">Selecciona un cliente para ver sus contactos</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2453,43 +2462,162 @@ function filtrarClienteInput(val){
 function renderTablaClientes(){
   const q=(document.getElementById('clientesBuscador')?.value||'').toLowerCase();
   const ciudad=(document.getElementById('clientesFiltCiudad')?.value||'').toLowerCase();
-  const orden=document.getElementById('clientesOrden')?.value||'az';
+  const orden=document.getElementById('clientesOrden')?.value||'nombre';
   let lista=clientesData.filter(c=>
-    (!q||(c.titulo.toLowerCase().includes(q)||c.nombre.toLowerCase().includes(q)||
-    c.ciudad.toLowerCase().includes(q)||c.email.toLowerCase().includes(q)))
+    (!q||(c.titulo.toLowerCase().includes(q)||c.ciudad.toLowerCase().includes(q)))
     &&(!ciudad||c.ciudad.toLowerCase()===ciudad)
   );
   if(orden==='nombre') lista=[...lista].sort((a,b)=>a.titulo.localeCompare(b.titulo,'es'));
   else if(orden==='ciudad') lista=[...lista].sort((a,b)=>(a.ciudad||'').localeCompare(b.ciudad||'','es'));
-  else if(orden==='contacto') lista=[...lista].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
   _listaFiltradaClientes=lista;
   const wrap=document.getElementById('clientesTablaWrap');
-  if(!wrap)return;
-  if(!lista.length){wrap.innerHTML='<div class="loading-list">Sin clientes que coincidan</div>';return;}
-  wrap.innerHTML=`<table class="cli-table">
-    <thead><tr><th>Razón Social</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Ciudad</th><th>NIT/RUT</th><th></th></tr></thead>
-    <tbody>${lista.map((c,idx)=>`<tr>
-      <td><strong>${c.titulo}</strong></td>
-      <td>${c.nombre||'—'}</td>
-      <td style="font-size:12px">${c.email||'—'}</td>
-      <td style="font-size:12px">${c.telefono||'—'}</td>
-      <td>${c.ciudad||'—'}</td>
-      <td style="font-size:12px">${c.nit||'—'}</td>
-      <td>
-        <div style="display:flex;gap:6px">
-          <button class="btn-cli-usar" onclick="usarClienteIdx(${idx})">
-            <i class="ti ti-arrow-right"></i> Usar
-          </button>
-          <button class="btn-cli-usar" style="border-color:var(--blue);color:var(--blue-dark)" onclick="editarClienteIdx(${idx})">
-            <i class="ti ti-pencil"></i>
-          </button>
-          <button class="btn-cli-usar" style="border-color:#EF4444;color:#EF4444" onclick="eliminarClienteIdx(${idx})" title="Eliminar cliente">
-            <i class="ti ti-trash"></i>
-          </button>
+  if(!wrap) return;
+  if(!lista.length){wrap.innerHTML='<div class="loading-list">Sin clientes</div>';return;}
+  wrap.innerHTML=lista.map((c,idx)=>`
+    <div onclick="seleccionarClienteDetalle(${idx})" id="cliRow_${idx}" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s" onmouseover="this.style.background='#f5f7f0'" onmouseout="this.style.background=_clienteSelIdx===${idx}?'#EDF7E3':'#fff'">
+      <div style="font-weight:600;font-size:13px;color:var(--text)">${c.titulo}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${c.ciudad||''}${c.ciudad&&c.nit?' · ':''} ${c.nit||''}</div>
+    </div>`).join('');
+}
+
+let _clienteSelIdx = -1;
+
+async function seleccionarClienteDetalle(idx){
+  _clienteSelIdx = idx;
+  // Resaltar fila seleccionada
+  document.querySelectorAll('[id^="cliRow_"]').forEach(el=>{
+    el.style.background = el.id===`cliRow_${idx}` ? '#EDF7E3' : '#fff';
+  });
+  const c = _listaFiltradaClientes[idx];
+  if(!c) return;
+  const panel = document.getElementById('clienteDetallePanel');
+  panel.innerHTML = `<div class="loading-list"><span class="spinner dark"></span> Cargando contactos...</div>`;
+
+  await cargarListaContactos();
+  const contactos = await cargarContactosPorCliente(c.titulo);
+
+  panel.innerHTML = `
+    <div style="max-width:600px">
+      <!-- Info cliente -->
+      <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text)">${c.titulo}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">${[c.ciudad,c.pais].filter(Boolean).join(' · ')}${c.nit?' · NIT: '+c.nit:''}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="usarClienteIdx(${idx})" class="btn-primary" style="padding:5px 12px;font-size:12px"><i class="ti ti-arrow-right"></i> Usar</button>
+            <button onclick="editarClienteIdx(${idx})" class="btn-sec" style="padding:5px 10px;font-size:12px"><i class="ti ti-pencil"></i></button>
+            <button onclick="eliminarClienteIdx(${idx})" class="btn-sec" style="padding:5px 10px;font-size:12px;border-color:#EF4444;color:#EF4444"><i class="ti ti-trash"></i></button>
+          </div>
         </div>
-      </td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+      </div>
+      <!-- Contactos -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">👤 Contactos <span style="font-size:11px;color:var(--text2);font-weight:400">(${contactos.length})</span></div>
+        <button onclick="abrirModalNuevoContacto('${c.titulo.replace(/'/g,"\\'")}',${idx})" class="btn-primary" style="padding:5px 12px;font-size:12px"><i class="ti ti-user-plus"></i> Agregar</button>
+      </div>
+      <div id="contactosDetalleWrap">
+        ${contactos.length ? contactos.map((ct,ci)=>`
+          <div style="background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-weight:600;font-size:13px">${ct.nombre}</div>
+              ${ct.cargo?`<div style="font-size:11px;color:var(--text2);margin-top:2px">${ct.cargo}</div>`:''}
+              ${ct.email?`<div style="font-size:11px;color:var(--green-dark);margin-top:2px">${ct.email}</div>`:''}
+              ${ct.telefono?`<div style="font-size:11px;color:var(--text2)">${ct.telefono}</div>`:''}
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+              <button onclick="editarContacto('${c.titulo.replace(/'/g,"\\'")}',${ci},${JSON.stringify(ct).replace(/'/g,"\\'")})" class="btn-sec" style="padding:4px 8px;font-size:11px"><i class="ti ti-pencil"></i></button>
+              <button onclick="eliminarContacto('${ct.nombre.replace(/'/g,"\\'")}','${c.titulo.replace(/'/g,"\\'")}',${idx})" class="btn-sec" style="padding:4px 8px;font-size:11px;border-color:#EF4444;color:#EF4444"><i class="ti ti-trash"></i></button>
+            </div>
+          </div>`).join('')
+        : '<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">Sin contactos registrados</div>'}
+      </div>
+    </div>`;
+}
+
+async function cargarContactosPorCliente(nombreCliente){
+  if(!listIdContactos) return [];
+  try{
+    const token=await getToken();
+    const r=await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${siteIdComercial}/lists/${listIdContactos}/items?expand=fields($select=Title,Cliente,Cargo,Email,Telefono,Activo)&$top=500`,
+      {headers:{Authorization:'Bearer '+token}}).then(r=>r.json());
+    return (r.value||[])
+      .filter(i=>(i.fields?.Cliente||'').trim().toLowerCase()===nombreCliente.trim().toLowerCase())
+      .map(i=>({
+        id:i.id,
+        nombre:(i.fields?.Title||'').trim(),
+        cargo:(i.fields?.Cargo||'').trim(),
+        email:(i.fields?.Email||'').trim(),
+        telefono:(i.fields?.Telefono||'').trim(),
+      })).filter(c=>c.nombre);
+  }catch(e){return [];}
+}
+
+function abrirModalNuevoContacto(nombreCliente, clienteIdx){
+  const nombre=prompt('Nombre del contacto:');
+  if(!nombre?.trim()) return;
+  const cargo=prompt('Cargo (opcional):')||'';
+  const email=prompt('Email (opcional):')||'';
+  const telefono=prompt('Teléfono (opcional):')||'';
+  _guardarNuevoContacto(nombreCliente, {nombre:nombre.trim(),cargo,email,telefono}, clienteIdx);
+}
+
+async function _guardarNuevoContacto(nombreCliente, datos, clienteIdx){
+  await cargarListaContactos();
+  if(!listIdContactos){showToast('Lista Contactos no encontrada','error');return;}
+  try{
+    const token=await getToken();
+    await fetch(`https://graph.microsoft.com/v1.0/sites/${siteIdComercial}/lists/${listIdContactos}/items`,{
+      method:'POST',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({fields:{Title:datos.nombre,Cliente:nombreCliente,Cargo:datos.cargo,Email:datos.email,Telefono:datos.telefono,Activo:true}})
+    });
+    showToast('✓ Contacto agregado','success');
+    seleccionarClienteDetalle(clienteIdx);
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+async function eliminarContacto(nombreContacto, nombreCliente, clienteIdx){
+  if(!confirm(`¿Eliminar contacto "${nombreContacto}"?`)) return;
+  await cargarListaContactos();
+  try{
+    const token=await getToken();
+    const r=await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${siteIdComercial}/lists/${listIdContactos}/items?expand=fields($select=Title,Cliente)&$top=500`,
+      {headers:{Authorization:'Bearer '+token}}).then(r=>r.json());
+    const item=r.value?.find(i=>
+      i.fields?.Title?.trim()===nombreContacto&&
+      (i.fields?.Cliente||'').trim().toLowerCase()===nombreCliente.trim().toLowerCase()
+    );
+    if(!item){showToast('Contacto no encontrado','error');return;}
+    await fetch(`https://graph.microsoft.com/v1.0/sites/${siteIdComercial}/lists/${listIdContactos}/items/${item.id}`,{
+      method:'DELETE',headers:{Authorization:'Bearer '+token}
+    });
+    showToast('✓ Contacto eliminado','success');
+    seleccionarClienteDetalle(clienteIdx);
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+async function editarContacto(nombreCliente, ci, datos){
+  if(typeof datos==='string') datos=JSON.parse(datos);
+  const nombre=prompt('Nombre:',datos.nombre);
+  if(!nombre?.trim()) return;
+  const cargo=prompt('Cargo:',datos.cargo)||'';
+  const email=prompt('Email:',datos.email)||'';
+  const telefono=prompt('Teléfono:',datos.telefono)||'';
+  await cargarListaContactos();
+  try{
+    const token=await getToken();
+    await fetch(`https://graph.microsoft.com/v1.0/sites/${siteIdComercial}/lists/${listIdContactos}/items/${datos.id}/fields`,{
+      method:'PATCH',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({Title:nombre.trim(),Cargo:cargo,Email:email,Telefono:telefono})
+    });
+    showToast('✓ Contacto actualizado','success');
+    seleccionarClienteDetalle(_clienteSelIdx);
+  }catch(e){showToast('Error: '+e.message,'error');}
 }
 
 async function eliminarClienteIdx(idx){
@@ -2559,39 +2687,75 @@ async function guardarCliente(){
     const existe=clientesData.find(c=>c.titulo.toLowerCase()===titulo.toLowerCase());
     if(existe){
       const usar=confirm(`Ya existe un cliente con ese nombre:\n"${existe.titulo}"\n\n¿Deseas usarlo en la oferta actual en lugar de crear uno nuevo?`);
-      if(usar){cerrarModalCliente();usarCliente(existe.titulo,existe.nombre,existe.ciudad,existe.telefono);}
+      if(usar){cerrarModalCliente();usarCliente(existe.titulo,'',existe.ciudad,existe.telefono);}
       return;
     }
   }
 
+  // Recopilar contactos del modal
+  const contactos=[];
+  document.querySelectorAll('[id^="mc_cont_nombre_"]').forEach(el=>{
+    const idx=el.id.replace('mc_cont_nombre_','');
+    const nombre=el.value.trim();
+    if(nombre) contactos.push({
+      nombre,
+      cargo:document.getElementById(`mc_cont_cargo_${idx}`)?.value.trim()||'',
+      email:document.getElementById(`mc_cont_email_${idx}`)?.value.trim()||'',
+      telefono:document.getElementById(`mc_cont_tel_${idx}`)?.value.trim()||'',
+    });
+  });
+
   const btn=document.getElementById('btnGuardarCliente');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Guardando...';
+
   const fields={
     Title:titulo,
-    Nombre:document.getElementById('mc_nombre').value.trim(),
-    Email:document.getElementById('mc_email').value.trim(),
-    Telefono:document.getElementById('mc_telefono').value.trim(),
     Ciudad:document.getElementById('mc_ciudad').value.trim(),
     Pais:document.getElementById('mc_pais').value.trim(),
     Asesor:currentUserName,
   };
+  const nit=document.getElementById('mc_nit')?.value.trim();
+  if(nit) fields.NIT=nit;
+
   try{
+    const token=await getToken();
     if(clienteEditandoId){
-      // PATCH — actualizar existente
-      const token=await getToken();
       await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdClientes}/items/${clienteEditandoId}/fields`,{
         method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(fields)
       });
       showToast('✓ Cliente actualizado','success');
     } else {
       await graphPost(`/sites/${siteId}/lists/${listIdClientes}/items`,{fields});
-      showToast('✓ Cliente guardado: '+titulo,'success');
+      // Guardar contactos en lista Contactos
+      if(contactos.length>0){
+        await cargarListaContactos();
+        if(listIdContactos){
+          for(const c of contactos){
+            try{
+              await fetch(`https://graph.microsoft.com/v1.0/sites/${siteIdComercial}/lists/${listIdContactos}/items`,{
+                method:'POST',
+                headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+                body:JSON.stringify({fields:{Title:c.nombre,Cliente:titulo,Cargo:c.cargo,Email:c.email,Telefono:c.telefono,Activo:true}})
+              });
+            }catch(e){console.warn('Error guardando contacto:',e.message);}
+          }
+          showToast(`✓ Cliente + ${contactos.length} contacto(s) guardados`,'success');
+        } else {
+          showToast('✓ Cliente guardado (lista Contactos no encontrada)','success');
+        }
+      } else {
+        showToast('✓ Cliente guardado: '+titulo,'success');
+      }
     }
     cerrarModalCliente();
     await cargarClientes(true);
-    if(!clienteEditandoId) usarCliente(titulo,fields.Nombre,fields.Ciudad,fields.Telefono);
+    if(!clienteEditandoId){
+      const primerContacto=contactos[0];
+      usarCliente(titulo, primerContacto?.nombre||'', fields.Ciudad||'', primerContacto?.telefono||'');
+      if(primerContacto) onClienteSeleccionado(titulo);
+    }
   }catch(e){showToast('Error: '+e.message,'error');}
-  finally{btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> Guardar Cliente';}
+  finally{btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> Guardar';}
 }
 
 function showToast(msg,type=''){
