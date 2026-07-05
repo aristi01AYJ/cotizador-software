@@ -656,57 +656,57 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
 
 <!-- MODAL NUEVO CLIENTE -->
 <div id="modalCliente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:var(--radius-lg);padding:28px 32px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:28px 32px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <strong style="font-size:15px" id="modalClienteTitulo">Nuevo Cliente</strong>
       <button onclick="cerrarModalCliente()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3)">×</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field-group" style="grid-column:1/-1">
-        <label>Razón Social *</label>
-        <input type="text" id="mc_titulo" placeholder="Nombre de la empresa..." style="width:100%">
-      </div>
-      <div class="field-group">
-        <label>Contacto (Nombre)</label>
-        <input type="text" id="mc_nombre" placeholder="Nombre del contacto...">
-      </div>
-      <div class="field-group">
-        <label>Email</label>
-        <input type="email" id="mc_email" placeholder="correo@empresa.com">
-      </div>
-      <div class="field-group">
-        <label>Teléfono</label>
-        <input type="text" id="mc_telefono" placeholder="3001234567">
-      </div>
-      <div class="field-group">
-        <label>Ciudad</label>
-        <input type="text" id="mc_ciudad" placeholder="Selecciona o escribe una ciudad..." list="ciudadesList" autocomplete="off">
-        <datalist id="ciudadesList">
-          <option value="Bogotá"><option value="Medellín"><option value="Cali">
-          <option value="Barranquilla"><option value="Bucaramanga"><option value="Pereira">
-          <option value="Manizales"><option value="Cúcuta"><option value="Ibagué">
-          <option value="Cartagena"><option value="Armenia"><option value="Pasto">
-          <option value="Villavicencio"><option value="Montería"><option value="Sincelejo">
-          <option value="Valledupar"><option value="Santa Marta"><option value="Neiva">
-          <option value="Popayán"><option value="Tunja"><option value="Palmira">
-          <option value="Bello"><option value="Itagüí"><option value="Envigado">
-          <option value="Rionegro"><option value="Dosquebradas">
-          <option value="Quito"><option value="Lima"><option value="Ciudad de Panamá">
-          <option value="Caracas">
-        </datalist>
-      </div>
-      <div class="field-group">
-        <label>País</label>
-        <input type="text" id="mc_pais" value="Colombia">
-      </div>
-      <div class="field-group" style="grid-column:1/-1">
-        <label>NIT / RUT</label>
-        <input type="text" id="mc_nit" placeholder="860.079.605-6">
+
+    <!-- SECCIÓN 1: Datos de la empresa -->
+    <div style="background:#f5f7f0;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#575756;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">🏢 Datos de la Empresa</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field-group" style="grid-column:1/-1;margin:0">
+          <label>Razón Social *</label>
+          <input type="text" id="mc_titulo" placeholder="Nombre de la empresa..." style="width:100%">
+        </div>
+        <div class="field-group" style="margin:0">
+          <label>Ciudad</label>
+          <input type="text" id="mc_ciudad" placeholder="Ciudad..." list="ciudadesList" autocomplete="off">
+          <datalist id="ciudadesList">
+            <option value="Bogotá"><option value="Medellín"><option value="Cali">
+            <option value="Barranquilla"><option value="Bucaramanga"><option value="Pereira">
+            <option value="Manizales"><option value="Cúcuta"><option value="Ibagué">
+            <option value="Cartagena"><option value="Armenia"><option value="Pasto">
+            <option value="Villavicencio"><option value="Montería"><option value="Santa Marta">
+            <option value="Quito"><option value="Lima"><option value="Ciudad de Panamá">
+          </datalist>
+        </div>
+        <div class="field-group" style="margin:0">
+          <label>País</label>
+          <input type="text" id="mc_pais" value="Colombia">
+        </div>
+        <div class="field-group" style="grid-column:1/-1;margin:0">
+          <label>NIT / RUT</label>
+          <input type="text" id="mc_nit" placeholder="860.079.605-6">
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+
+    <!-- SECCIÓN 2: Contactos -->
+    <div style="background:#EFF6FF;border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#1E3A8A;text-transform:uppercase;letter-spacing:0.5px">👤 Contactos</div>
+        <button onclick="mcAgregarContacto()" style="background:#1E3A8A;color:#fff;border:none;border-radius:var(--radius);padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit">+ Agregar contacto</button>
+      </div>
+      <div id="mcContactosWrap">
+        <!-- El primer contacto se agrega dinámicamente -->
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn-sec" onclick="cerrarModalCliente()">Cancelar</button>
-      <button class="btn-primary" id="btnGuardarCliente" onclick="guardarCliente()"><i class="ti ti-check"></i> Guardar Cliente</button>
+      <button class="btn-primary" id="btnGuardarCliente" onclick="guardarCliente()"><i class="ti ti-check"></i> Guardar</button>
     </div>
   </div>
 </div>
