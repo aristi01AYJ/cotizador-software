@@ -2655,6 +2655,35 @@ function usarCliente(titulo,nombre,ciudad,telefono){
 }
 
 let clienteEditandoId=null;
+function mcAgregarContacto(datos={}){
+  const wrap = document.getElementById('mcContactosWrap');
+  const idx = mcContactosCount++;
+  const div = document.createElement('div');
+  div.id = `mcContacto_${idx}`;
+  div.style.cssText = 'background:#fff;border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;border:1px solid #BFDBFE;position:relative';
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field-group" style="grid-column:1/-1;margin:0">
+        <label style="font-size:10px">Nombre *</label>
+        <input type="text" id="mc_cont_nombre_${idx}" placeholder="Nombre completo..." value="${datos.nombre||''}" style="width:100%">
+      </div>
+      <div class="field-group" style="margin:0">
+        <label style="font-size:10px">Cargo</label>
+        <input type="text" id="mc_cont_cargo_${idx}" placeholder="Gerente, Jefe..." value="${datos.cargo||''}">
+      </div>
+      <div class="field-group" style="margin:0">
+        <label style="font-size:10px">Teléfono</label>
+        <input type="text" id="mc_cont_tel_${idx}" placeholder="300 123 4567" value="${datos.telefono||''}">
+      </div>
+      <div class="field-group" style="grid-column:1/-1;margin:0">
+        <label style="font-size:10px">Email</label>
+        <input type="email" id="mc_cont_email_${idx}" placeholder="correo@empresa.com" value="${datos.email||''}" style="width:100%">
+      </div>
+    </div>
+    ${idx>0?`<button onclick="document.getElementById('mcContacto_${idx}').remove()" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#888;font-size:14px">×</button>`:''}
+  `;
+  wrap.appendChild(div);
+}
 function abrirModalCliente(){
   clienteEditandoId=null;
   ['mc_titulo','mc_nombre','mc_email','mc_telefono','mc_ciudad','mc_nit'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
