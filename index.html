@@ -717,7 +717,10 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
   <div style="background:#fff;border-radius:var(--radius-lg);width:680px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
     <div style="background:#575756;color:#fff;padding:14px 20px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:15px;font-weight:700">🔒 Liquidador imos — Uso Interno</span>
-      <button onclick="cerrarLiqSW()" style="background:none;border:none;cursor:pointer;color:#fff;font-size:20px">×</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="liqSWImprimir()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><i class="ti ti-printer"></i> PDF</button>
+        <button onclick="cerrarLiqSW()" style="background:none;border:none;cursor:pointer;color:#fff;font-size:20px">×</button>
+      </div>
     </div>
     <div style="padding:20px">
 
@@ -1086,6 +1089,58 @@ function abrirLiqSW(){
   document.getElementById('liqSWTCE').value=tce;
   calcLiqSW();
   document.getElementById('liqSWModal').style.display='flex';
+}
+
+function liqSWImprimir(){
+  const retencion=parseFloat(document.getElementById('liqSWRetencion')?.value)||0;
+  const tce=parseFloat(document.getElementById('liqSWTCE')?.value)||4000;
+  const fecha=new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+  const asesor=document.getElementById('userChip')?.textContent||'—';
+  const resumen=document.getElementById('liqSWResumen')?.innerHTML||'';
+  const tabla=document.getElementById('liqSWTabla')?.innerHTML||'';
+  const total=document.getElementById('liqSWTotal')?.innerHTML||'';
+
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Liquidador SW — Uso Interno AYJ</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;color:#333;font-size:13px;padding:0}
+    .print-bar{background:#575756;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+    .print-bar button{background:#C0392B;border:none;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+    .header{background:#575756;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+    .header h1{font-size:16px;font-weight:700}
+    .header .meta{font-size:11px;opacity:0.8;text-align:right}
+    .content{padding:20px 24px}
+    .confidencial{background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 14px;font-size:11px;color:#92400E;font-weight:600;margin-bottom:16px;text-align:center}
+    @media print{.print-bar{display:none}body{padding:0}}
+  </style>
+  </head><body>
+  <div class="print-bar">
+    <span style="font-size:13px;font-weight:600">🔒 Liquidador imos — Uso Interno AYJ</span>
+    <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    <span style="margin-left:auto;font-size:11px;opacity:0.7">Documento Confidencial</span>
+  </div>
+  <div class="header">
+    <h1>🔒 Liquidador imos — Uso Interno</h1>
+    <div class="meta">
+      <div>Asesor: ${asesor}</div>
+      <div>Fecha: ${fecha}</div>
+      <div>Retención SW: ${retencion}% · TCE: ${tce.toLocaleString('es-CO')} EUR/COP</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="confidencial">⚠ DOCUMENTO CONFIDENCIAL — USO EXCLUSIVO INTERNO AYJ</div>
+    ${resumen}
+    ${tabla}
+    ${total}
+  </div>
+  </body></html>`;
+
+  const w=window.open('','_blank');
+  if(!w){showToast('Permite popups para imprimir','error');return;}
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),600);
 }
 
 function cerrarLiqSW(){
