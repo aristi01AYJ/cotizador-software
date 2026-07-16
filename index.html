@@ -2351,6 +2351,18 @@ async function cargarHistorial(){
     historialData=data.map(i=>{
       const f=i.fields;
       const fechaRaw=f.Fecha_Cotizacion||f.Fecha_x005f_Cotizacion||i.createdDateTime||null;
+      // Items guardados en formato compacto {n,t,c,tl,m,tce} o expandido {nombre,tarifaUSD,cantidad}
+      let items=[];
+      try{
+        const raw=JSON.parse(f.Items||'[]');
+        items=raw.map(x=>({
+          nombre:x.nombre||x.n||'—',
+          tipo:x.tipo||x.t||'stock',
+          cantidad:x.cantidad||x.c||1,
+          tarifa:x.tarifaUSD||x.tarifa||x.t2||0,
+          tipoLicencia:x.tipoLicencia||x.tl||'',
+        }));
+      }catch(e){}
       return{
         num:f.Title||f.ID_SYNERGY||'—',
         idSynergy:f.IDSynergy||f.ID_SYNERGY||'',
@@ -2358,13 +2370,14 @@ async function cargarHistorial(){
         vendedor:f.Vendedor||'—',
         estado:f.Estado||'Enviada',
         total:Math.round(f.GranTotal||0),
-        tasaEUR:parseFloat(f.TasaEur||4000),
-        descuento:parseFloat(f.Descuento||0),
+        tasaEUR:parseFloat(f.TasaEur||f.TRM||4000),
+        desc:parseFloat(f.Descuento||0),
         garantia:f.Garantia||'',
         condPago:f.CondicionPago||'',
+        validez:f.Validez||'',
         fecha:fechaRaw?new Date(fechaRaw):null,
         fechaStr:fechaRaw?new Date(fechaRaw).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'—',
-        items:f.Items?JSON.parse(f.Items||'[]'):[],
+        items,
         linkPDF:typeof f.LinkPDF==='object'?f.LinkPDF?.Url||'':f.LinkPDF||'',
         prob:parseFloat(f.Probabilidad||0),
         id:i.id,
@@ -3154,37 +3167,70 @@ function borrarOfertaIdx(id){
 }
 
 async function editarOferta(itemId, r){
-  // Cargar datos de la oferta en el carrito
   if(carrito.length>0){
     if(!confirm('El carrito actual se reemplazará con los datos de esta oferta. ¿Continuar?')) return;
   }
-  // Cargar items
-  carrito=r.items.map(i=>({
-    id:i.nombre,
-    grupoKey:null,
-    tipo:i.tipo||'stock',
-    nombre:i.nombre,
-    marca:'',modelo:'',tipologia:'',
-    tarifa:i.tarifaUSD||i.tarifa||0,
-    descripcion:'',fichaTecnica:'',ytVideo:'',
-    cantidad:i.cantidad||1,
-  }));
 
-  // Cargar cliente
+  // Ir a vista de cotización primero
+  switchView('nueva');
+
+  // Cargar items — buscar en rawGrupos para recuperar datos completos
+  carrito=r.items.map(i=>{
+    // Buscar en los grupos cargados por nombre
+    const grp=rawGrupos?.find(g=>g.title===i.nombre||g.nombre===i.nombre);
+    return{
+      id:i.nombre+'_'+Date.now()+'_'+Math.random(),
+      grupoKey:grp?.id||null,
+      tipo:i.tipo||'stock',
+      nombre:i.nombre,
+      marca:grp?.marca||'',
+      modelo:grp?.modelo||'',
+      tipologia:grp?.tipologia||'',
+      tarifa:i.tarifa||0,
+      tipoLicencia:i.tipoLicencia||grp?.tipoLicencia||'',
+      descripcion:grp?.descripcion||'',
+      cantidad:i.cantidad||1,
+    };
+  });
+
+  // Restaurar cliente
   const clienteInput=document.getElementById('clienteInput');
-  if(clienteInput) clienteInput.value=r.cliente||'';
+  if(clienteInput){ clienteInput.value=r.cliente||''; onClienteSeleccionado&&onClienteSeleccionado(r.cliente); }
 
-  // Cargar condición de pago
+  // Restaurar condición de pago
   const condSel=document.getElementById('condPagoSel');
-  if(condSel){
-    const opciones=[...condSel.options].map(o=>o.value);
-    if(opciones.includes(r.estado)) condSel.value=r.estado;
+  if(condSel&&r.condPago){
+    const opts=[...condSel.options].map(o=>o.value);
+    if(opts.includes(r.condPago)) condSel.value=r.condPago;
   }
 
+  // Restaurar validez
+  const valEl=document.getElementById('validezSel');
+  if(valEl&&r.validez) valEl.value=r.validez;
+
+  // Restaurar descuento
+  if(r.desc>0){
+    const descEl=document.getElementById('descInput');
+    if(descEl) descEl.value=r.desc;
+    const descAYJEl=document.getElementById('descAYJ');
+    if(descAYJEl) descAYJEl.value=0;
+    if(typeof calcTotales==='function') calcTotales();
+  }
+
+  // Restaurar TCE/TRM
+  if(r.tasaEUR){
+    const tceEl=document.getElementById('tceInput');
+    if(tceEl){ tceEl.value=r.tasaEUR; if(typeof actualizarTCE==='function') actualizarTCE(); }
+  }
+
+  // Restaurar Synergy
+  const idSynInput=document.getElementById('idSynergyInput');
+  if(idSynInput) idSynInput.value=r.idSynergy||'';
+
   // Generar número con sufijo de revisión
-  const baseNum=r.num.replace(/-R\d+$/, ''); // quitar revisión anterior si existe
+  const baseNum=r.num.replace(/-R\d+$/,'');
   const revisiones=historialData.filter(h=>h.num.startsWith(baseNum));
-  const maxRev=revisiones.reduce((max, h)=>{
+  const maxRev=revisiones.reduce((max,h)=>{
     const m=h.num.match(/-R(\d+)$/);
     return m?Math.max(max,parseInt(m[1])):Math.max(max,1);
   },1);
@@ -3193,20 +3239,13 @@ async function editarOferta(itemId, r){
   // Activar modo edición
   modoEdicion={itemId, numOferta:numRevision, original:r.num};
 
-  // Cambiar botón guardar
   const btn=document.getElementById('btnGuardar');
-  if(btn){
-    btn.innerHTML='<i class="ti ti-device-floppy"></i> Guardar Revisión';
-    btn.style.background='#3B82F6';
-  }
-  // Badge número con revisión
+  if(btn){ btn.innerHTML='<i class="ti ti-device-floppy"></i> Guardar Revisión'; btn.style.background='#3B82F6'; }
+
   const badge=document.getElementById('ofertaNum');
   if(badge) badge.textContent=numRevision;
-  const idSynInput=document.getElementById('idSynergyInput');
-  if(idSynInput) idSynInput.value='';
 
   showToast('Oferta '+r.num+' cargada para editar','success');
-  switchView('nueva');
   renderCarrito();
   calcTotales();
 }
