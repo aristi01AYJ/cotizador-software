@@ -36,6 +36,7 @@ Este repositorio es **público** (GitHub Pages gratis). El token de GitHub, el A
 - Campo NIT interno: `NIT_x002f_RUT` — leer con `.toString().trim()`.
 - Campos tipo Hyperlink (LinkPDF, Ficha Técnica): `{Url:"...", Description:"..."}`.
 - Clientes/Contactos: SIEMPRE en el `siteId` de Comercial (todos los cotizadores, incluso SVC).
+- **SIEMPRE usar `graphGetAll()` (pagina con `@odata.nextLink`) para cualquier query que pueda superar 500 ítems** — especialmente `generarNumOferta()`. `graphGet()` con `$top=500` solo trae la primera página; una vez la lista de Cotizaciones supera 500 registros, el consecutivo se queda pegado para siempre porque deja de ver los ítems más nuevos (bug real, 31-ago-2026, afectó los 5 cotizadores).
 
 
 ## Este repo específico: Software imos
@@ -45,3 +46,6 @@ Este repositorio es **público** (GitHub Pages gratis). El token de GitHub, el A
 - Liquidador imos con botón 🖨 PDF propio.
 - `actualizarNumOferta` está definida localmente en este archivo (no la busques en un módulo compartido).
 - `guardarCliente` usa el `siteId` de Comercial — si llega vacío, primero llama `await cargarListaContactos()`.
+
+### Fixes recientes
+- **31-ago-2026 — Consecutivo de cotización pegado.** `generarNumOferta()` usaba `graphGet()` sin paginar; se cambió a `graphGetAll()`. Ver regla en la sección de Graph API arriba.
