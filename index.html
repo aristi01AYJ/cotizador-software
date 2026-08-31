@@ -2002,9 +2002,9 @@ function nuevaCotizacion(){
 async function generarNumOferta(){
   if(!siteId||!listIdCotizaciones){document.getElementById('ofertaNum').textContent='SW-2026-001';return;}
   try{
-    const data=await graphGet(`/sites/${siteId}/lists/${listIdCotizaciones}/items?expand=fields&$top=500`);
+    const items=await graphGetAll(`/sites/${siteId}/lists/${listIdCotizaciones}/items?expand=fields&$top=500`);
     let maxNum=0;
-    data.value.forEach(i=>{
+    items.forEach(i=>{
       const t=i.fields?.Title||'';
       const match=t.match(/SW-\d{4}-(\d+)/);
       if(match) maxNum=Math.max(maxNum,parseInt(match[1]));
