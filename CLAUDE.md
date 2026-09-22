@@ -47,5 +47,22 @@ Este repositorio es **público** (GitHub Pages gratis). El token de GitHub, el A
 - `actualizarNumOferta` está definida localmente en este archivo (no la busques en un módulo compartido).
 - `guardarCliente` usa el `siteId` de Comercial — si llega vacío, primero llama `await cargarListaContactos()`.
 
+### ⚠️ Este repo está MUY atrasado frente a Máquinas (MQ V1/V2) — pendiente de portar
+A 22-sep-2026, `cotizador-software/index.html` tiene ~4.770 líneas vs las ~7.100 de `cotizador-ayj` (V1) — le faltan casi 2.000 líneas de features/fixes acumulados en Máquinas, incluyendo (lista no exhaustiva, ver `cotizador-ayj/CLAUDE.md` para el detalle de cada uno):
+- `asesorLabel()` — **ya se portó aquí** (22-sep-2026, ver abajo). El resto de esta lista sigue pendiente.
+- Dashboard cross-filter interactivo (`dashFiltro`, clic en gráfico filtra el resto) — SW solo tiene 4 gráficos estáticos, sin interacción.
+- Estado como dropdown de 3 opciones + Vista Previa de ítems + botón "Duplicados" (limpieza) en el Historial.
+- Probabilidad como 5 estrellas clicables (SW sigue con `prompt()` de texto libre).
+- Agrupar revisiones -Rn ("Solo vigentes") — SW no tiene el concepto de revisiones (`editarOferta` no genera `-Rn`, hay que confirmar si sobreescribe o duplica).
+- Gerente de Cuenta en Clientes + "Mis Clientes" / Ofertas del cliente en su ficha.
+- Posible Cierre (30/60/90) + Fecha de Seguimiento + pantalla de Seguimiento + edición desde Historial.
+- Firma digital del cliente en el PDF + link para firma externa.
+
+**No intentar portar todo de una vez** — es un cambio grande. Ver conversación de 22-sep-2026 para el plan por fases acordado con el usuario.
+
 ### Fixes recientes
+- **22-sep-2026 — 3 bugs reportados por el usuario: consecutivo pegado, duplicar y probabilidad "no funcionan".** Diagnóstico:
+  - `editarProbabilidad()` y el chequeo de "es mi oferta" en el Historial usaban el mismo patrón fragil que causó el bug de Jorge Pulido/Jorge Salamanca en Máquinas (`currentUserName.includes(vendedor.split(' ')[0])`) — con 2 vendedores de nombre "Jorge" esto los mezcla, incluyendo en el permiso de editar. Se portó `asesorLabel()` de Máquinas y se usa en ambos lugares. Confirmado con prueba simulada: antes Jorge Pulido podía editar la probabilidad de la oferta de Jorge Salamanca; ahora se bloquea correctamente.
+  - `duplicarOferta()` no tenía un mensaje claro cuando la oferta no tenía ítems guardados (`Items` vacío o mal parseado) — ahora avisa explícitamente en vez de fallar en silencio.
+  - **El consecutivo pegado NO se pudo reproducir/confirmar desde este entorno** (no hay login real a SharePoint) — `generarNumOferta()` y `graphGetAll()` en sí mismos están bien (paginan correctamente, igual que en Máquinas). La sospecha más probable es que `resolverSite()` no está encontrando `listIdCotizaciones` (usa comparación EXACTA `n==='cotizaciones_sw'` contra el nombre de la lista en SharePoint — si el nombre real difiere aunque sea un espacio, esto nunca hace match y el consecutivo se queda pegado en 001 para siempre). Se agregó diagnóstico en consola (`console.log`/`console.warn`) en `resolverSite()` y `generarNumOferta()` — la próxima vez que pase, revisar la consola del navegador (F12) y confirmar si `listIdCotizaciones` sale "NO ENCONTRADA" y qué nombres de lista aparecen realmente.
 - **31-ago-2026 — Consecutivo de cotización pegado.** `generarNumOferta()` usaba `graphGet()` sin paginar; se cambió a `graphGetAll()`. Ver regla en la sección de Graph API arriba.
