@@ -530,6 +530,10 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
           <option value="nombre">Por Nombre</option>
           <option value="ciudad">Por Ciudad</option>
         </select>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="clientesVerTodos" onchange="renderTablaClientes()" style="cursor:pointer">
+          Mis Clientes
+        </label>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button class="btn-sec" onclick="cargarClientes(true)"><i class="ti ti-refresh"></i></button>
           <button class="btn-primary" onclick="abrirModalCliente()"><i class="ti ti-user-plus"></i> Nuevo Cliente</button>
@@ -2655,9 +2659,11 @@ function renderTablaClientes(){
   const q=(document.getElementById('clientesBuscador')?.value||'').toLowerCase();
   const ciudad=(document.getElementById('clientesFiltCiudad')?.value||'').toLowerCase();
   const orden=document.getElementById('clientesOrden')?.value||'nombre';
+  const soloMios=document.getElementById('clientesVerTodos')?.checked;
   let lista=clientesData.filter(c=>
     (!q||(c.titulo.toLowerCase().includes(q)||c.ciudad.toLowerCase().includes(q)))
     &&(!ciudad||c.ciudad.toLowerCase()===ciudad)
+    &&(!soloMios||asesorLabel(c.asesor)===asesorLabel(currentUserName))
   );
   if(orden==='nombre') lista=[...lista].sort((a,b)=>a.titulo.localeCompare(b.titulo,'es'));
   else if(orden==='ciudad') lista=[...lista].sort((a,b)=>(a.ciudad||'').localeCompare(b.ciudad||'','es'));
@@ -2691,6 +2697,20 @@ async function seleccionarClienteDetalle(idx){
   _contactosMapa = {};
   contactos.forEach((ct,i)=>{ _contactosMapa[i]=ct; });
 
+  // Ofertas de este cliente — reutiliza historialData; si aún no se ha visitado el Historial
+  // en esta sesión, se carga aquí bajo demanda (mismo dato, una sola carga por sesión).
+  if(!historialData.length) await cargarHistorial();
+  const nombreNorm=c.titulo.trim().toLowerCase();
+  const ofertasCliente=historialData
+    .filter(r=>(r.cliente||'').trim().toLowerCase()===nombreNorm)
+    .sort((a,b)=>(b.fecha||new Date(0))-(a.fecha||new Date(0)));
+  const totalOfertas=ofertasCliente.length;
+  const totalCotizado=ofertasCliente.reduce((s,r)=>s+r.total,0);
+  const ganadasCliente=ofertasCliente.filter(r=>r.estado==='Cerrada-Ganada');
+  const perdidasCliente=ofertasCliente.filter(r=>r.estado==='Cerrada-Perdida');
+  const cerradasCliente=ganadasCliente.length+perdidasCliente.length;
+  const tasaCierreCliente=cerradasCliente>0?Math.round(ganadasCliente.length/cerradasCliente*100):0;
+
   panel.innerHTML = `
     <div style="max-width:600px">
       <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px;margin-bottom:16px">
@@ -2698,12 +2718,61 @@ async function seleccionarClienteDetalle(idx){
           <div>
             <div style="font-size:16px;font-weight:700;color:var(--text)">${c.titulo}</div>
             <div style="font-size:12px;color:var(--text2);margin-top:4px">${[c.ciudad,c.pais].filter(Boolean).join(' · ')}${c.nit?' · NIT: '+c.nit:''}</div>
+            <div style="font-size:11px;margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${c.asesor
+                ?'<span style="color:var(--text2)"><i class="ti ti-user-star" style="font-size:12px;vertical-align:-1px"></i> Gerente de Cuenta: <strong>'+asesorLabel(c.asesor)+'</strong></span>'
+                 +'<button onclick="mostrarReasignar('+idx+')" class="btn-sec" style="padding:2px 8px;font-size:10px">Reasignar</button>'
+                :'<span style="color:#92400E">⚠ Sin Gerente de Cuenta</span>'
+                 +'<button onclick="asignarmeCliente('+idx+')" class="btn-sec" style="padding:2px 8px;font-size:10px;border-color:#F59E0B;color:#92400E">Asignarme</button>'
+                 +'<button onclick="mostrarReasignar('+idx+')" class="btn-sec" style="padding:2px 8px;font-size:10px">Asignar a otro</button>'
+              }
+              <span id="reasignarBox_${idx}" style="display:none;align-items:center;gap:6px"></span>
+            </div>
           </div>
           <div style="display:flex;gap:6px">
             <button onclick="editarClienteIdx(${idx})" class="btn-sec" style="padding:5px 10px;font-size:12px"><i class="ti ti-pencil"></i></button>
             <button onclick="eliminarClienteIdx(${idx})" class="btn-sec" style="padding:5px 10px;font-size:12px;border-color:#EF4444;color:#EF4444"><i class="ti ti-trash"></i></button>
           </div>
         </div>
+      </div>
+      <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">📊 Ofertas a este cliente <span style="font-size:11px;color:var(--text2);font-weight:400">(${totalOfertas})</span></div>
+          ${totalOfertas?`<button onclick="verOfertasClienteEnHistorial('${c.titulo.replace(/'/g,"\\'")}')" class="btn-sec" style="padding:4px 10px;font-size:11px"><i class="ti ti-list"></i> Ver en Historial</button>`:''}
+        </div>
+        ${totalOfertas?`
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+          <div style="background:var(--bg);border-radius:var(--radius);padding:8px 6px;text-align:center">
+            <div style="font-size:17px;font-weight:800;color:var(--text)">${totalOfertas}</div>
+            <div style="font-size:10px;color:var(--text2)">Ofertas</div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:8px 6px;text-align:center">
+            <div style="font-size:17px;font-weight:800;color:var(--text)">EUR ${totalCotizado.toLocaleString('es-CO')}</div>
+            <div style="font-size:10px;color:var(--text2)">Total Cotizado</div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:8px 6px;text-align:center">
+            <div style="font-size:17px;font-weight:800;color:#22C55E">${ganadasCliente.length}</div>
+            <div style="font-size:10px;color:var(--text2)">Ganadas</div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:8px 6px;text-align:center">
+            <div style="font-size:17px;font-weight:800;color:var(--text)">${tasaCierreCliente}%</div>
+            <div style="font-size:10px;color:var(--text2)">Tasa de Cierre</div>
+          </div>
+        </div>
+        <div style="max-height:220px;overflow-y:auto">
+          ${ofertasCliente.map(r=>{
+            const eCfg=ESTADOS_CONFIG[r.estado]||{bg:'var(--amber-light)',text:'var(--amber)'};
+            return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--border);font-size:12px">
+              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                <span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.num}</span>
+                <span style="color:var(--text3);font-size:11px">${r.fechaStr}</span>
+              </div>
+              <span style="background:${eCfg.bg};color:${eCfg.text};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;flex-shrink:0">${r.estado}</span>
+              <span style="font-weight:700;flex-shrink:0">USD ${r.total.toLocaleString('es-CO')}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        `:'<div style="color:var(--text3);font-size:13px;padding:16px;text-align:center">Sin ofertas registradas para este cliente</div>'}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:13px;font-weight:700;color:var(--text)">👤 Contactos <span style="font-size:11px;color:var(--text2);font-weight:400">(${contactos.length})</span></div>
@@ -2912,6 +2981,86 @@ function editarClienteIdx(idx){
   if(c) editarCliente(c);
 }
 
+// PATCH compartido del campo Asesor en SharePoint + estado local — usado tanto por
+// asignarmeCliente() como por confirmarReasignar() para no duplicar la llamada a Graph.
+async function patchAsesorCliente(idx, nuevoNombre){
+  const c=_listaFiltradaClientes[idx];
+  if(!c) return;
+  try{
+    const token=await getToken();
+    await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdClientes}/items/${c.id}/fields`,{
+      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({Asesor:nuevoNombre})
+    });
+    c.asesor=nuevoNombre;
+    const enData=clientesData.find(x=>x.id===c.id);
+    if(enData) enData.asesor=nuevoNombre;
+    showToast('✓ Gerente de Cuenta: '+asesorLabel(nuevoNombre),'success');
+    seleccionarClienteDetalle(idx);
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+// Registra al usuario actual como Gerente de Cuenta de un cliente que no tenía uno asignado.
+async function asignarmeCliente(idx){
+  const c=_listaFiltradaClientes[idx];
+  if(!c) return;
+  if(c.asesor){showToast('Este cliente ya tiene Gerente de Cuenta asignado','error');return;}
+  if(!confirm(`¿Registrarte como Gerente de Cuenta de "${c.titulo}"?`)) return;
+  await patchAsesorCliente(idx, currentUserName);
+}
+
+// Nombres completos conocidos por el sistema (los que ya aparecen como Asesor de algún
+// cliente o Vendedor de alguna oferta, más el usuario actual), deduplicados por asesorLabel().
+function listaAsesoresConocidos(){
+  const mapa=new Map();
+  const agregar=nombre=>{ if(!nombre) return; const lbl=asesorLabel(nombre); if(!mapa.has(lbl)) mapa.set(lbl,nombre); };
+  clientesData.forEach(c=>agregar(c.asesor));
+  historialData.forEach(r=>agregar(r.vendedor));
+  agregar(currentUserName);
+  return [...mapa.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([label,nombre])=>({label,nombre}));
+}
+
+function mostrarReasignar(idx){
+  const box=document.getElementById('reasignarBox_'+idx);
+  if(!box) return;
+  const c=_listaFiltradaClientes[idx];
+  const asesores=listaAsesoresConocidos().filter(a=>a.nombre!==c?.asesor);
+  box.innerHTML=`
+    <select id="reasignarSelect_${idx}" style="padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:inherit">
+      <option value="">Elegir asesor...</option>
+      ${asesores.map(a=>`<option value="${a.nombre.replace(/"/g,'&quot;')}">${a.label}</option>`).join('')}
+    </select>
+    <button onclick="confirmarReasignar(${idx})" class="btn-primary" style="padding:2px 8px;font-size:10px">Asignar</button>
+    <button onclick="ocultarReasignar(${idx})" class="btn-sec" style="padding:2px 8px;font-size:10px">Cancelar</button>`;
+  box.style.display='inline-flex';
+}
+
+function ocultarReasignar(idx){
+  const box=document.getElementById('reasignarBox_'+idx);
+  if(box){ box.style.display='none'; box.innerHTML=''; }
+}
+
+async function confirmarReasignar(idx){
+  const c=_listaFiltradaClientes[idx];
+  if(!c) return;
+  const sel=document.getElementById('reasignarSelect_'+idx);
+  const nuevoAsesor=sel?.value;
+  if(!nuevoAsesor){showToast('Elige un asesor de la lista','error');return;}
+  const mensaje=c.asesor
+    ?`¿Reasignar "${c.titulo}" de ${asesorLabel(c.asesor)} a ${asesorLabel(nuevoAsesor)}?`
+    :`¿Asignar "${c.titulo}" a ${asesorLabel(nuevoAsesor)} como Gerente de Cuenta?`;
+  if(!confirm(mensaje)) return;
+  await patchAsesorCliente(idx, nuevoAsesor);
+}
+
+// Desde la ficha del cliente: salta al Historial con el filtro de Cliente ya aplicado.
+function verOfertasClienteEnHistorial(nombreCliente){
+  switchView('historial');
+  const el=document.getElementById('hFiltCliente');
+  if(el) el.value=nombreCliente;
+  filtrarHistorial();
+}
+
 function usarContactoIdx(ci, nombreCliente){
   const ct=_contactosMapa[ci];
   if(!ct) return;
@@ -2948,11 +3097,47 @@ function usarCliente(titulo,nombre,ciudad,telefono){
   showToast('Cliente cargado: '+titulo,'success');
 }
 
+// ── MODAL CLIENTE: contactos dinámicos ──────────────────
+let mcContactosCount = 0;
+
+function mcAgregarContacto(datos={}){
+  const wrap = document.getElementById('mcContactosWrap');
+  const idx = mcContactosCount++;
+  const div = document.createElement('div');
+  div.id = `mcContacto_${idx}`;
+  div.style.cssText = 'background:#fff;border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;border:1px solid #BFDBFE;position:relative';
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field-group" style="grid-column:1/-1;margin:0">
+        <label style="font-size:10px">Nombre *</label>
+        <input type="text" id="mc_cont_nombre_${idx}" placeholder="Nombre completo..." value="${datos.nombre||''}" style="width:100%">
+      </div>
+      <div class="field-group" style="margin:0">
+        <label style="font-size:10px">Cargo</label>
+        <input type="text" id="mc_cont_cargo_${idx}" placeholder="Gerente, Jefe..." value="${datos.cargo||''}">
+      </div>
+      <div class="field-group" style="margin:0">
+        <label style="font-size:10px">Teléfono</label>
+        <input type="text" id="mc_cont_tel_${idx}" placeholder="300 123 4567" value="${datos.telefono||''}">
+      </div>
+      <div class="field-group" style="grid-column:1/-1;margin:0">
+        <label style="font-size:10px">Email</label>
+        <input type="email" id="mc_cont_email_${idx}" placeholder="correo@empresa.com" value="${datos.email||''}" style="width:100%">
+      </div>
+    </div>
+    ${idx>0?`<button onclick="document.getElementById('mcContacto_${idx}').remove()" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#888;font-size:14px">×</button>`:''}
+  `;
+  wrap.appendChild(div);
+}
+
 let clienteEditandoId=null;
 function abrirModalCliente(){
   clienteEditandoId=null;
   ['mc_titulo','mc_nombre','mc_email','mc_telefono','mc_ciudad','mc_nit'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('mc_pais').value='Colombia';
+  document.getElementById('mcContactosWrap').innerHTML='';
+  mcContactosCount=0;
+  mcAgregarContacto();
   document.getElementById('modalClienteTitulo').textContent='Nuevo Cliente';
   document.getElementById('btnGuardarCliente').innerHTML='<i class="ti ti-check"></i> Guardar Cliente';
   document.getElementById('modalCliente').style.display='flex';
@@ -3007,10 +3192,12 @@ async function guardarCliente(){
     Title:titulo,
     Ciudad:document.getElementById('mc_ciudad').value.trim(),
     Pais:document.getElementById('mc_pais').value.trim(),
-    Asesor:currentUserName,
   };
   const nit=document.getElementById('mc_nit')?.value.trim();
   if(nit) fields['NIT_x002f_RUT']=nit;
+  // Gerente de Cuenta: se registra al CREAR, y nunca se pisa al solo editar otros datos — si
+  // no lo tenía asignado, se usa el botón "Asignarme"/"Asignar a otro" del panel de detalle.
+  if(!clienteEditandoId) fields.Asesor=currentUserName;
 
   try{
     const token=await getToken();
