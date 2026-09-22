@@ -1394,7 +1394,24 @@ async function resolverSite(){
       if(n==='cotizaciones_sw') listIdCotizaciones=l.id;
       if(n.includes('liquidaci')) listIdLiquidaciones=l.id;
     });
+    // Diagnóstico — si "consecutivo pegado"/"historial vacío" vuelve a pasar, revisar la consola:
+    // si listIdCotizaciones sale "NO ENCONTRADA", el nombre real de la lista en SharePoint ya no
+    // es exactamente "cotizaciones_sw" (mayúsc/minúsc no importa, pero sí el resto del texto).
+    console.log('[AYJ] Listas de SharePoint encontradas en el sitio:',lists.value.map(l=>l.displayName));
+    console.log('[AYJ] listIdMaquinas:',listIdMaquinas||'NO ENCONTRADA','· listIdClientes:',listIdClientes||'NO ENCONTRADA','· listIdCotizaciones:',listIdCotizaciones||'NO ENCONTRADA','· listIdLiquidaciones:',listIdLiquidaciones||'NO ENCONTRADA');
   }catch(e){showToast('Error conectando SharePoint: '+e.message,'error');}
+}
+
+// Etiqueta corta para mostrar/comparar vendedores (dropdowns, permisos "es mi oferta"). Usar
+// SIEMPRE esto en vez de nombre.split(' ')[0] — con nombres de pila repetidos en el equipo
+// (ej. "Jorge Pulido" / "Jorge Salamanca" en Máquinas), comparar solo por primer nombre mezcla
+// personas distintas como si fueran la misma, incluyendo en los chequeos de permisos de
+// "es tu propia oferta" — bug real ya corregido en Máquinas, se porta aquí preventivamente.
+function asesorLabel(nombre){
+  const n=(nombre||'').toLowerCase();
+  if(n.includes('pulido')) return 'Jorge P';
+  if(n.includes('salamanca')) return 'Jorge S';
+  return (nombre||'').split(' ')[0]||'—';
 }
 
 function mapItem(i){
@@ -2000,7 +2017,10 @@ function nuevaCotizacion(){
 
 
 async function generarNumOferta(){
-  if(!siteId||!listIdCotizaciones){document.getElementById('ofertaNum').textContent='SW-2026-001';return;}
+  if(!siteId||!listIdCotizaciones){
+    console.warn('[AYJ] generarNumOferta: siteId o listIdCotizaciones vacíos — el consecutivo se queda en SW-2026-001. Revisa el log de resolverSite() arriba para ver qué lista no se encontró.');
+    document.getElementById('ofertaNum').textContent='SW-2026-001';return;
+  }
   try{
     const items=await graphGetAll(`/sites/${siteId}/lists/${listIdCotizaciones}/items?expand=fields&$top=500`);
     let maxNum=0;
@@ -2010,7 +2030,11 @@ async function generarNumOferta(){
       if(match) maxNum=Math.max(maxNum,parseInt(match[1]));
     });
     cotNum=maxNum+1;
-  }catch(e){cotNum=1;}
+    console.log('[AYJ] generarNumOferta: '+items.length+' cotizaciones leídas, siguiente consecutivo: SW-2026-'+String(cotNum).padStart(3,'0'));
+  }catch(e){
+    cotNum=1;
+    console.error('[AYJ] generarNumOferta: error consultando SharePoint, se usó 001 por defecto:',e.message);
+  }
   document.getElementById('ofertaNum').textContent='SW-2026-'+String(cotNum).padStart(3,'0');
 }
 
@@ -2431,7 +2455,7 @@ function filtrarHistorial(){
         +(r.linkPDF?'<a href="'+r.linkPDF+'" target="_blank" class="btn-cli-usar" style="border-color:var(--red);color:var(--red);text-decoration:none;" title="Ver oferta"><i class="ti ti-file-type-pdf"></i></a> ':'' )
         +(r.items.length?'<button class="btn-cli-usar" onclick=\'duplicarOferta('+JSON.stringify(r.cliente)+','+JSON.stringify(r.items)+')\' title="Duplicar en carrito"><i class="ti ti-copy"></i></button>':'' )
         +' <button class="btn-cli-usar" onclick="cambiarEstado(\''+r.id+'\',\''+r.estado+'\')" title="Cambiar estado" style="border-color:var(--blue);color:var(--blue-dark)"><i class="ti ti-pencil"></i></button>'
-        +(r.vendedor&&currentUserName&&(r.vendedor===currentUserName||currentUserName.toLowerCase().includes(r.vendedor.split(' ')[0].toLowerCase()))?
+        +(r.vendedor&&currentUserName&&asesorLabel(r.vendedor)===asesorLabel(currentUserName)?
           ' <button class="btn-cli-usar" onclick="editarOfertaIdx(\''+r.id+'\')" title="Editar oferta" style="border-color:var(--green);color:var(--green-dark)"><i class="ti ti-edit"></i></button>'
           +' <button class="btn-cli-usar" onclick="borrarOfertaIdx(\''+r.id+'\')" title="Borrar oferta" style="border-color:var(--red);color:var(--red)"><i class="ti ti-trash"></i></button>'
           :'')
@@ -2444,6 +2468,8 @@ function filtrarHistorial(){
 
 
 function duplicarOferta(cliente, itemsData){
+  console.log('[AYJ] duplicarOferta — cliente:',cliente,'· ítems recibidos:',itemsData);
+  if(!itemsData||!itemsData.length){ showToast('Esta oferta no tiene ítems guardados para duplicar','error'); return; }
   if(carrito.length>0 && !confirm('¿Cargar esta oferta? Se reemplazará el carrito actual.')) return;
   // Cargar cliente
   document.getElementById('clienteInput').value=cliente;
@@ -3138,7 +3164,10 @@ async function cambiarEstado(itemId, estadoActual){
 
 // ── PROBABILIDAD ──
 async function editarProbabilidad(itemId, probActual, vendedorOferta){
-  if(vendedorOferta&&!currentUserName.toLowerCase().includes(vendedorOferta.split(' ')[0].toLowerCase())){
+  // Antes comparaba solo el primer nombre con .includes() — con 2 vendedores que comparten
+  // primer nombre eso los mezcla (bug real ya corregido en Máquinas). asesorLabel() los
+  // distingue correctamente.
+  if(vendedorOferta&&asesorLabel(vendedorOferta)!==asesorLabel(currentUserName)){
     showToast('Solo puedes editar la probabilidad de tus propias ofertas','error');return;
   }
   const nueva=prompt(`Probabilidad de cierre (0-100%):`, probActual||'');
@@ -3146,10 +3175,11 @@ async function editarProbabilidad(itemId, probActual, vendedorOferta){
   const val=Math.min(100,Math.max(0,parseInt(nueva)||0));
   try{
     const token=await getToken();
-    await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdCotizaciones}/items/${itemId}/fields`,{
+    const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdCotizaciones}/items/${itemId}/fields`,{
       method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify({Probabilidad:val})
     });
+    if(!r.ok){ const t=await r.text(); console.error('[AYJ] Error guardando Probabilidad:',r.status,t); throw new Error('PATCH '+r.status+': '+t); }
     showToast('✓ Probabilidad actualizada a '+val+'%','success');
     cargarHistorial();
   }catch(e){showToast('Error: '+e.message,'error');}
