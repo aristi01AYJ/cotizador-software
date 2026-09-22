@@ -58,8 +58,9 @@ A 22-sep-2026, el usuario pidió portar 3 fases: **(1) Historial + Dashboard, (2
 **⏳ Pendiente — resto de fase 1 (Dashboard):**
 - Filtros de barra superior Mes/Asesor + toggle "Ocultar datos incompletos" (SW solo tiene el filtro de Año) — opcional, no pedido explícitamente, se puede agregar después si se necesita.
 
-**⏳ Pendiente — fase 2 (Clientes):**
-- Gerente de Cuenta ("Mis Clientes" / asignar / reasignar) + "Ofertas a este cliente" en la ficha.
+**✅ Ya portado (22-sep-2026) — fase 2 (Clientes):**
+- Gerente de Cuenta completo — checkbox "Mis Clientes" en el toolbar (`renderTablaClientes()` filtra por `asesorLabel(c.asesor)===asesorLabel(currentUserName)`), header de la ficha con "⚠ Sin Gerente de Cuenta"/Asignarme (`asignarmeCliente()`) o Gerente actual/Reasignar (`mostrarReasignar()`+`confirmarReasignar()`, ambos vía `patchAsesorCliente()` compartido), y tarjeta "📊 Ofertas a este cliente" (KPIs Ofertas/Total Cotizado/Ganadas/Tasa de Cierre + lista, calculado desde `historialData` con carga perezosa si aún no se ha visitado Historial) — todo portado casi literal de Máquinas. **No se portó** el gráfico de dona `chartClienteEstado` de esa tarjeta (solo se dejaron los KPIs+lista), por alcance/tiempo — se puede agregar después si se pide. No se necesitó ninguna columna nueva en SharePoint: `Asesor` ya existe en la lista Clientes/Contactos (es compartida entre todos los cotizadores).
+- De paso, 1 bug real grave corregido: `editarCliente()` (y el botón "+ Agregar contacto" del modal) llamaban a `mcAgregarContacto()`/`mcContactosCount`, que **nunca estuvieron definidas en este archivo** — SW nunca tuvo ese bloque completo, a diferencia de Máquinas. Esto significaba que **editar cualquier cliente existente rompía con un ReferenceError** (el modal ni siquiera abría). Se portó el bloque "MODAL CLIENTE: contactos dinámicos" completo de Máquinas.
 
 **⏳ Pendiente — fase 3 (Posible Cierre + Seguimiento):**
 - Posible Cierre (30/60/90) + Fecha de Seguimiento + pantalla de Seguimiento + edición desde Historial. Necesita 2 columnas nuevas en la lista `cotizaciones_sw` de SharePoint: `FechaCierre` (Fecha y hora) y `PosibleCierre` (Una línea de texto) — mismos nombres que en Máquinas.
