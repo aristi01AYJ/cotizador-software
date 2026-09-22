@@ -2218,6 +2218,7 @@ async function guardarCotizacion(){
       IDSynergy:idSynergy||'',
       Cliente:cliente||'Sin cliente',
       GranTotal:Math.round(totalCOP),
+      TasaEur:trm,
       Estado:'Enviada',
       Vendedor:vendedor||currentUserName||'Sin vendedor',
       Descuento:desc,
@@ -2556,14 +2557,21 @@ async function cargarHistorial(){
           tipoLicencia:x.tipoLicencia||x.tl||'',
         }));
       }catch(e){}
+      // GranTotal se guarda en SharePoint ya convertido a COP (ver guardarCotizacion()) — no en
+      // EUR pese al nombre genérico. tasaEUR es la TRM COP/EUR usada al guardar (campo TasaEur,
+      // agregado 22-sep-2026); las ofertas guardadas antes de eso no lo traen, así que se usa
+      // la TRM actual como aproximación (mejor que nada, pero no exacta para ofertas viejas).
+      const totalCOPraw=Math.round(f.GranTotal||0);
+      const tasaEURraw=parseFloat(f.TasaEur||f.TRM||0)||trm||4000;
       return{
         num:f.Title||f.ID_SYNERGY||'—',
         idSynergy:f.IDSynergy||f.ID_SYNERGY||'',
         cliente:f.Cliente||'—',
         vendedor:f.Vendedor||'—',
         estado:f.Estado||'Enviada',
-        total:Math.round(f.GranTotal||0),
-        tasaEUR:parseFloat(f.TasaEur||f.TRM||4000),
+        total:tasaEURraw>0?Math.round(totalCOPraw/tasaEURraw):0,
+        totalCOP:totalCOPraw,
+        tasaEUR:tasaEURraw,
         desc:parseFloat(f.Descuento||0),
         garantia:f.Garantia||'',
         condPago:f.CondicionPago||'',
@@ -2584,6 +2592,13 @@ async function cargarHistorial(){
   }catch(e){document.getElementById('historialBody').innerHTML=`<div class="loading-list">Error: ${e.message}</div>`;}
 }
 
+let _histOrden={col:'fecha',asc:false};
+function ordenarHistorial(col){
+  if(_histOrden.col===col) _histOrden.asc=!_histOrden.asc;
+  else {_histOrden.col=col; _histOrden.asc=col==='cliente'||col==='num';}
+  filtrarHistorial();
+}
+
 function filtrarHistorial(){
   const qNum=(document.getElementById('hFiltNum')?.value||'').toLowerCase();
   const qCli=(document.getElementById('hFiltCliente')?.value||'').toLowerCase();
@@ -2594,7 +2609,7 @@ function filtrarHistorial(){
   const desde=document.getElementById('hFiltDesde')?.value?new Date(document.getElementById('hFiltDesde').value):null;
   const hasta=document.getElementById('hFiltHasta')?.value?new Date(document.getElementById('hFiltHasta').value+'T23:59:59'):null;
 
-  window._historialLista=historialData.filter(r=>{
+  let lista=historialData.filter(r=>{
     if(qNum&&!r.num.toLowerCase().includes(qNum)) return false;
     if(qCli&&!r.cliente.toLowerCase().includes(qCli)) return false;
     if(qVen&&!r.vendedor.toLowerCase().includes(qVen)) return false;
@@ -2604,18 +2619,38 @@ function filtrarHistorial(){
     return true;
   });
 
+  // Ordenar
+  lista.sort((a,b)=>{
+    let va,vb;
+    if(_histOrden.col==='num'){va=a.num;vb=b.num;}
+    else if(_histOrden.col==='cliente'){va=a.cliente;vb=b.cliente;}
+    else if(_histOrden.col==='vendedor'){va=a.vendedor;vb=b.vendedor;}
+    else if(_histOrden.col==='total'){va=a.total;vb=b.total;}
+    else{va=a.fecha||new Date(0);vb=b.fecha||new Date(0);}
+    if(va<vb) return _histOrden.asc?-1:1;
+    if(va>vb) return _histOrden.asc?1:-1;
+    return 0;
+  });
+
+  window._historialLista=lista;
   const wrap=document.getElementById('historialBody');
-  const lista=window._historialLista||[];
   if(!lista.length){wrap.innerHTML='<div class="loading-list">Sin resultados</div>';return;}
 
-  const totalFiltrado=lista.reduce((s,r)=>s+r.total,0);
+  const totalFiltradoEUR=lista.reduce((s,r)=>s+r.total,0);
+  const totalFiltradoCOP=lista.reduce((s,r)=>s+(r.totalCOP||0),0);
+  const ico=(col)=>_histOrden.col===col?(_histOrden.asc?' ↑':' ↓'):'';
 
   wrap.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:10px;">'
-    +lista.length+' oferta'+(lista.length!==1?'s':'')+' · Total: <strong>USD '+totalFiltrado.toLocaleString('es-CO')+'</strong></div>'
+    +lista.length+' oferta'+(lista.length!==1?'s':'')+' · Total: <strong>EUR '+totalFiltradoEUR.toLocaleString('es-CO')+'</strong> · <strong>COP '+totalFiltradoCOP.toLocaleString('es-CO')+'</strong></div>'
     +'<table class="hist-table"><thead><tr>'
-    +'<th>N° Oferta</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Estado</th>'
+    +'<th style="cursor:pointer" onclick="ordenarHistorial(\'num\')">N° Oferta'+ico('num')+'</th>'
+    +'<th style="cursor:pointer" onclick="ordenarHistorial(\'fecha\')">Fecha'+ico('fecha')+'</th>'
+    +'<th style="cursor:pointer" onclick="ordenarHistorial(\'cliente\')">Cliente'+ico('cliente')+'</th>'
+    +'<th style="cursor:pointer" onclick="ordenarHistorial(\'vendedor\')">Vendedor'+ico('vendedor')+'</th>'
+    +'<th>Estado</th>'
     +'<th title="Clic en la fecha de una fila para definir/editar el Posible Cierre">Seguimiento</th>'
-    +'<th style="text-align:right">Total USD</th><th style="text-align:center">Acciones</th>'
+    +'<th style="text-align:right;cursor:pointer" onclick="ordenarHistorial(\'total\')">Total'+ico('total')+'</th>'
+    +'<th style="text-align:center">Acciones</th>'
     +'</tr></thead><tbody>'
     +lista.map((r,i)=>{
       const eCfg=ESTADOS_CONFIG[r.estado]||{bg:'var(--amber-light)',text:'var(--amber)',color:'var(--amber)'};
@@ -2646,7 +2681,10 @@ function filtrarHistorial(){
             return '<span onclick="abrirModalCierre(\''+r.id+'\','+JSON.stringify(r.fechaCierre?r.fechaCierre.toISOString().split('T')[0]:null)+')" title="Clic para definir/editar el Posible Cierre" style="cursor:pointer;font-size:11px;padding:2px 8px;border-radius:10px;'+estilo+'">'+segTexto+'</span>';
           })()
         +'</td>'
-        +'<td class="total">USD '+r.total.toLocaleString('es-CO')+'</td>'
+        +'<td class="total" style="text-align:right;white-space:nowrap">'
+          +'<div>EUR '+r.total.toLocaleString('es-CO')+'</div>'
+          +'<div style="font-size:10px;color:var(--text2);font-weight:400">COP '+(r.totalCOP||0).toLocaleString('es-CO')+'</div>'
+        +'</td>'
         +'<td style="text-align:center;white-space:nowrap">'
         +(r.linkPDF?'<a href="'+r.linkPDF+'" target="_blank" class="btn-cli-usar" style="border-color:var(--red);color:var(--red);text-decoration:none;" title="Ver oferta"><i class="ti ti-file-type-pdf"></i></a> ':'' )
         +(r.items.length?'<button class="btn-cli-usar" onclick=\'duplicarOferta('+JSON.stringify(r.cliente)+','+JSON.stringify(r.items)+')\' title="Duplicar en carrito"><i class="ti ti-copy"></i></button>':'' )
@@ -3725,12 +3763,18 @@ async function cargarDashboard(){
     dashData=data.map(i=>{
       const f=i.fields;
       const fechaRaw=f.Fecha_x005f_Cotizacion||i.createdDateTime||null;
+      // GranTotal está guardado en COP (ver guardarCotizacion()), no en EUR — se convierte con
+      // la TRM COP/EUR guardada en TasaEur, o la actual como aproximación si la oferta es de
+      // antes de que ese campo existiera.
+      const totalCOPraw=parseFloat(f.GranTotal||0);
+      const tasaEURraw=parseFloat(f.TasaEur||f.TRM||0)||trm||4000;
       return{
         num:f.ID_SYNERGY||f.Title||'',
         cliente:f.Cliente||'',
         vendedor:f.Vendedor||'',
         estado:f.Estado||'Enviada',
-        total:parseFloat(f.GranTotal||0),
+        total:tasaEURraw>0?totalCOPraw/tasaEURraw:0,
+        totalCOP:totalCOPraw,
         prob:parseFloat(f.Probabilidad||0),
         fecha:fechaRaw?new Date(fechaRaw):null,
         anio:fechaRaw?new Date(fechaRaw).getFullYear():2026,
@@ -4078,7 +4122,7 @@ function renderDuplicados(){
     const filas=ordenado.map((it,i)=>{
       const esConservar=i===0;
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;'+(esConservar?'background:#F0FDF4':'background:#FEF2F2')+'">'
-        +'<span>'+(esConservar?'✅ CONSERVAR (más reciente)':'🗑️ BORRAR')+' — '+it.cliente+' · USD '+it.total.toLocaleString('es-CO')+(it.fecha?' · '+it.fecha.toLocaleString('es-CO'):'')+'</span>'
+        +'<span>'+(esConservar?'✅ CONSERVAR (más reciente)':'🗑️ BORRAR')+' — '+it.cliente+' · COP '+it.total.toLocaleString('es-CO')+(it.fecha?' · '+it.fecha.toLocaleString('es-CO'):'')+'</span>'
         +'</div>';
     }).join('');
     return '<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">'
@@ -4091,7 +4135,7 @@ function renderDuplicados(){
     const ordenado=[...arr].sort((a,b)=>b.idNum-a.idNum);
     const filas=ordenado.map((it,i)=>
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;'+(i===0?'background:#F0FDF4':'background:#FFFBEB')+'">'
-        +'<span>'+(i===0?'✅ más reciente':'⚠️')+' — <strong>'+it.numMostrado+'</strong> · '+it.cliente+' · USD '+it.total.toLocaleString('es-CO')+(it.fecha?' · '+it.fecha.toLocaleString('es-CO'):'')+'</span>'
+        +'<span>'+(i===0?'✅ más reciente':'⚠️')+' — <strong>'+it.numMostrado+'</strong> · '+it.cliente+' · COP '+it.total.toLocaleString('es-CO')+(it.fecha?' · '+it.fecha.toLocaleString('es-CO'):'')+'</span>'
         +(i>0?'<button class="btn-cli-usar" style="border-color:var(--red);color:var(--red);flex-shrink:0" onclick="borrarDuplicadoManual(\''+it.id+'\',\''+it.numMostrado.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i> Borrar</button>':'')
       +'</div>'
     ).join('');
