@@ -47,18 +47,25 @@ Este repositorio es **público** (GitHub Pages gratis). El token de GitHub, el A
 - `actualizarNumOferta` está definida localmente en este archivo (no la busques en un módulo compartido).
 - `guardarCliente` usa el `siteId` de Comercial — si llega vacío, primero llama `await cargarListaContactos()`.
 
-### ⚠️ Este repo está MUY atrasado frente a Máquinas (MQ V1/V2) — pendiente de portar
-A 22-sep-2026, `cotizador-software/index.html` tiene ~4.770 líneas vs las ~7.100 de `cotizador-ayj` (V1) — le faltan casi 2.000 líneas de features/fixes acumulados en Máquinas, incluyendo (lista no exhaustiva, ver `cotizador-ayj/CLAUDE.md` para el detalle de cada uno):
-- `asesorLabel()` — **ya se portó aquí** (22-sep-2026, ver abajo). El resto de esta lista sigue pendiente.
-- Dashboard cross-filter interactivo (`dashFiltro`, clic en gráfico filtra el resto) — SW solo tiene 4 gráficos estáticos, sin interacción.
-- Estado como dropdown de 3 opciones + Vista Previa de ítems + botón "Duplicados" (limpieza) en el Historial.
-- Probabilidad como 5 estrellas clicables (SW sigue con `prompt()` de texto libre).
-- Agrupar revisiones -Rn ("Solo vigentes") — SW no tiene el concepto de revisiones (`editarOferta` no genera `-Rn`, hay que confirmar si sobreescribe o duplica).
-- Gerente de Cuenta en Clientes + "Mis Clientes" / Ofertas del cliente en su ficha.
-- Posible Cierre (30/60/90) + Fecha de Seguimiento + pantalla de Seguimiento + edición desde Historial.
-- Firma digital del cliente en el PDF + link para firma externa.
+### ⚠️ Este repo está MUY atrasado frente a Máquinas (MQ V1/V2) — portando por fases
+A 22-sep-2026, el usuario pidió portar 3 fases: **(1) Historial + Dashboard, (2) Clientes/Gerente de Cuenta, (3) Posible Cierre + Seguimiento** (dejó fuera, por ahora, la firma digital del PDF). Progreso:
 
-**No intentar portar todo de una vez** — es un cambio grande. Ver conversación de 22-sep-2026 para el plan por fases acordado con el usuario.
+**✅ Ya portado (22-sep-2026):**
+- `asesorLabel()` — y con él, el fix del bug de "vendedores con mismo primer nombre mezclados" en 3 sitios: `editarProbabilidadEstrellas()`, `borrarOferta()`, y el chequeo de Editar/Borrar del Historial.
+- Historial: Vista Previa de ítems (`previewItems()`), Estado como `<select>` inline de 3 opciones (reemplaza el modal `cambiarEstado`), Probabilidad como 5 estrellas clicables (reemplaza el `prompt()` de `editarProbabilidad`), filtro de N° Oferta (`hFiltNum`), y la herramienta "🧹 Duplicados" completa (`abrirLimpiezaDuplicados()` + 2 pasadas de detección).
+
+**⏳ Pendiente — resto de fase 1 (Dashboard):**
+- Cross-filter interactivo (`dashFiltro`, clic en gráfico filtra el resto) — SW sigue con 4 gráficos estáticos, sin interacción.
+
+**⏳ Pendiente — fase 2 (Clientes):**
+- Gerente de Cuenta ("Mis Clientes" / asignar / reasignar) + "Ofertas a este cliente" en la ficha.
+
+**⏳ Pendiente — fase 3 (Posible Cierre + Seguimiento):**
+- Posible Cierre (30/60/90) + Fecha de Seguimiento + pantalla de Seguimiento + edición desde Historial. Necesita 2 columnas nuevas en la lista `cotizaciones_sw` de SharePoint: `FechaCierre` (Fecha y hora) y `PosibleCierre` (Una línea de texto) — mismos nombres que en Máquinas.
+
+**Fuera de alcance por ahora:** firma digital del cliente en el PDF, link de firma externa, agrupar revisiones -Rn ("Solo vigentes" — SW no tiene el concepto de revisiones; `editarOferta` no genera `-Rn`, hay que confirmar primero si sobreescribe o duplica antes de portar esto).
+
+Ver `cotizador-ayj/CLAUDE.md` para el detalle de cómo funciona cada feature en Máquinas (la fuente de la que se está portando). **No portar todo de una sola vez** — se está avanzando por fases, cada una con su propio commit y prueba.
 
 ### Fixes recientes
 - **22-sep-2026 — 3 bugs reportados por el usuario: consecutivo pegado, duplicar y probabilidad "no funcionan".** Diagnóstico:
