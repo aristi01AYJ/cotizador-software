@@ -462,6 +462,10 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:#fff;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;flex-shrink:0">
         <strong style="font-size:15px;align-self:center">Historial de ofertas</strong>
         <div class="field-group">
+          <label>N° Oferta</label>
+          <input type="text" id="hFiltNum" placeholder="SW-2026-..." oninput="filtrarHistorial()" style="min-width:120px">
+        </div>
+        <div class="field-group">
           <label>Cliente</label>
           <input type="text" id="hFiltCliente" placeholder="Filtrar cliente..." oninput="filtrarHistorial()" style="min-width:140px">
         </div>
@@ -492,9 +496,22 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
           Ver todas
         </label>
         <button class="btn-sec" onclick="cargarHistorial()"><i class="ti ti-refresh"></i></button>
+        <button class="btn-sec" onclick="abrirLimpiezaDuplicados()" title="Buscar y borrar ofertas duplicadas (mismo N° de oferta)"><i class="ti ti-copy-off"></i> Duplicados</button>
       </div>
       <div style="flex:1;overflow-y:auto;padding:16px 20px;background:var(--bg)">
         <div id="historialBody"></div>
+      </div>
+    </div>
+
+    <!-- MODAL LIMPIEZA DE DUPLICADOS -->
+    <div id="modalDuplicados" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:var(--radius-lg);padding:24px;width:640px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:14px;font-weight:700;color:var(--gris)">🧹 Ofertas Duplicadas</div>
+          <button onclick="document.getElementById('modalDuplicados').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3)">×</button>
+        </div>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:14px">Busca N° de oferta repetidos exactos (mismo número, sin revisión -R). Se conserva siempre el más reciente y se borran los demás — revisa la lista antes de confirmar.</p>
+        <div id="duplicadosBody"></div>
       </div>
     </div>
 
@@ -2412,6 +2429,7 @@ async function cargarHistorial(){
 }
 
 function filtrarHistorial(){
+  const qNum=(document.getElementById('hFiltNum')?.value||'').toLowerCase();
   const qCli=(document.getElementById('hFiltCliente')?.value||'').toLowerCase();
   const verTodas=document.getElementById('histVerTodas')?.checked||false;
   // Por defecto filtra por el usuario logueado
@@ -2421,6 +2439,7 @@ function filtrarHistorial(){
   const hasta=document.getElementById('hFiltHasta')?.value?new Date(document.getElementById('hFiltHasta').value+'T23:59:59'):null;
 
   window._historialLista=historialData.filter(r=>{
+    if(qNum&&!r.num.toLowerCase().includes(qNum)) return false;
     if(qCli&&!r.cliente.toLowerCase().includes(qCli)) return false;
     if(qVen&&!r.vendedor.toLowerCase().includes(qVen)) return false;
     if(qEst&&r.estado!==qEst) return false;
@@ -2444,26 +2463,71 @@ function filtrarHistorial(){
       const eCfg=ESTADOS_CONFIG[r.estado]||{bg:'var(--amber-light)',text:'var(--amber)',color:'var(--amber)'};
       const estadoBg=eCfg.bg;
       const estadoColor=eCfg.text;
+      const vp=previewItems(r.items);
       return '<tr>'
         +'<td class="num">'+r.num+'</td>'
         +'<td style="white-space:nowrap;color:var(--text2);font-size:12px">'+r.fechaStr+'</td>'
-        +'<td><strong>'+r.cliente+'</strong></td>'
+        +'<td><strong>'+r.cliente+'</strong>'+(vp?'<div style="font-size:10px;color:var(--text2);margin-top:2px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+vp.full+'">'+vp.corto+'</div>':'')+'</td>'
         +'<td style="font-size:12px">'+r.vendedor+'</td>'
-        +'<td><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+r.estado+'</span></td>'
+        +'<td>'
+          +'<select onchange="aplicarEstado(\''+r.id+'\',this.value)" title="Cambiar estado" style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;border:none;cursor:pointer;background:'+estadoBg+';color:'+estadoColor+';font-family:inherit">'
+            +(['Enviada','Cerrada-Ganada','Cerrada-Perdida'].includes(r.estado)?'':'<option value="'+r.estado+'" selected>'+r.estado+'</option>')
+            +'<option value="Enviada"'+(r.estado==='Enviada'?' selected':'')+'>Enviada</option>'
+            +'<option value="Cerrada-Ganada"'+(r.estado==='Cerrada-Ganada'?' selected':'')+'>✓ Ganada</option>'
+            +'<option value="Cerrada-Perdida"'+(r.estado==='Cerrada-Perdida'?' selected':'')+'>✗ Perdida</option>'
+          +'</select>'
+        +'</td>'
         +'<td class="total">USD '+r.total.toLocaleString('es-CO')+'</td>'
         +'<td style="text-align:center;white-space:nowrap">'
         +(r.linkPDF?'<a href="'+r.linkPDF+'" target="_blank" class="btn-cli-usar" style="border-color:var(--red);color:var(--red);text-decoration:none;" title="Ver oferta"><i class="ti ti-file-type-pdf"></i></a> ':'' )
         +(r.items.length?'<button class="btn-cli-usar" onclick=\'duplicarOferta('+JSON.stringify(r.cliente)+','+JSON.stringify(r.items)+')\' title="Duplicar en carrito"><i class="ti ti-copy"></i></button>':'' )
-        +' <button class="btn-cli-usar" onclick="cambiarEstado(\''+r.id+'\',\''+r.estado+'\')" title="Cambiar estado" style="border-color:var(--blue);color:var(--blue-dark)"><i class="ti ti-pencil"></i></button>'
         +(r.vendedor&&currentUserName&&asesorLabel(r.vendedor)===asesorLabel(currentUserName)?
           ' <button class="btn-cli-usar" onclick="editarOfertaIdx(\''+r.id+'\')" title="Editar oferta" style="border-color:var(--green);color:var(--green-dark)"><i class="ti ti-edit"></i></button>'
           +' <button class="btn-cli-usar" onclick="borrarOfertaIdx(\''+r.id+'\')" title="Borrar oferta" style="border-color:var(--red);color:var(--red)"><i class="ti ti-trash"></i></button>'
           :'')
-        +' <button class="btn-cli-usar" onclick="editarProbabilidad(\''+r.id+'\','+r.prob+',\''+r.vendedor+'\')" title="Probabilidad: '+r.prob+'%" style="border-color:var(--green);color:var(--green-dark);font-size:10px;padding:2px 6px">'+r.prob+'%</button>'
+        +' <span style="display:inline-flex;gap:1px;vertical-align:middle;margin-left:2px" title="Probabilidad de cierre">'+estrellasHistorial(r.id,r.prob,r.vendedor)+'</span>'
         +'</td>'
         +'</tr>';
     }).join('')
     +'</tbody></table>';
+}
+
+// "Vista Previa" del Historial: nombres de los ítems separados por " | " (ej. imos PDMS | imos NOESIS)
+function previewItems(items){
+  if(!items||!items.length) return null;
+  const nombres=items.map(it=>(it.nombre||'').trim()).filter(Boolean);
+  if(!nombres.length) return null;
+  const completo=nombres.join(' | ');
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  let corto=completo;
+  if(corto.length>60) corto=corto.slice(0,57)+'…';
+  return {corto:esc(corto), full:esc(completo)};
+}
+
+// ── PROBABILIDAD (estrellas 0-5, se guarda internamente como % en pasos de 20) ──
+function estrellasHistorial(itemId, prob0a100, vendedorOferta){
+  const actuales=Math.round((prob0a100||0)/20);
+  return [1,2,3,4,5].map(s=>
+    '<span onclick="editarProbabilidadEstrellas(\''+itemId+'\','+s+',\''+(vendedorOferta||'').replace(/'/g,"\\'")+'\')" '
+    +'style="cursor:pointer;font-size:13px;color:'+(actuales>=s?'#F59E0B':'#ddd')+'" '
+    +'title="Probabilidad: '+(s*20)+'%">★</span>'
+  ).join('');
+}
+async function editarProbabilidadEstrellas(itemId, estrellas, vendedorOferta){
+  if(vendedorOferta&&currentUserName&&asesorLabel(currentUserName)!==asesorLabel(vendedorOferta)){
+    showToast('Solo puedes editar la probabilidad de tus propias ofertas','error');return;
+  }
+  const val=Math.min(100,Math.max(0,estrellas*20));
+  try{
+    const token=await getToken();
+    const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdCotizaciones}/items/${itemId}/fields`,{
+      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({Probabilidad:val})
+    });
+    if(!r.ok){ const t=await r.text(); console.error('[AYJ] Error guardando Probabilidad:',r.status,t); throw new Error('PATCH '+r.status+': '+t); }
+    showToast('✓ Probabilidad actualizada a '+estrellas+'★','success');
+    cargarHistorial();
+  }catch(e){showToast('Error: '+e.message,'error');}
 }
 
 
@@ -3151,40 +3215,6 @@ function renderChart(id, type, labels, data, colors, options={}){
   });
 }
 
-// ── CAMBIO DE ESTADO DESDE HISTORIAL ──
-async function cambiarEstado(itemId, estadoActual){
-  const opciones=Object.keys(ESTADOS_CONFIG).filter(e=>e!==estadoActual);
-  const html=opciones.map(e=>`<button onclick="aplicarEstado('${itemId}','${e}',this.closest('.modal-estado'))" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:600;background:${ESTADOS_CONFIG[e].bg};color:${ESTADOS_CONFIG[e].text}">${e}</button>`).join('');
-  const modal=document.createElement('div');
-  modal.className='modal-estado';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;display:flex;align-items:center;justify-content:center';
-  modal.innerHTML=`<div style="background:#fff;border-radius:var(--radius-lg);padding:24px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.2)"><div style="font-size:14px;font-weight:700;color:var(--gris);margin-bottom:16px">Cambiar estado — oferta</div><div style="font-size:12px;color:var(--text2);margin-bottom:12px">Estado actual: <strong>${estadoActual}</strong></div>${html}<button onclick="this.closest('.modal-estado').remove()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text2)">Cancelar</button></div>`;
-  document.body.appendChild(modal);
-}
-
-// ── PROBABILIDAD ──
-async function editarProbabilidad(itemId, probActual, vendedorOferta){
-  // Antes comparaba solo el primer nombre con .includes() — con 2 vendedores que comparten
-  // primer nombre eso los mezcla (bug real ya corregido en Máquinas). asesorLabel() los
-  // distingue correctamente.
-  if(vendedorOferta&&asesorLabel(vendedorOferta)!==asesorLabel(currentUserName)){
-    showToast('Solo puedes editar la probabilidad de tus propias ofertas','error');return;
-  }
-  const nueva=prompt(`Probabilidad de cierre (0-100%):`, probActual||'');
-  if(nueva===null)return;
-  const val=Math.min(100,Math.max(0,parseInt(nueva)||0));
-  try{
-    const token=await getToken();
-    const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdCotizaciones}/items/${itemId}/fields`,{
-      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({Probabilidad:val})
-    });
-    if(!r.ok){ const t=await r.text(); console.error('[AYJ] Error guardando Probabilidad:',r.status,t); throw new Error('PATCH '+r.status+': '+t); }
-    showToast('✓ Probabilidad actualizada a '+val+'%','success');
-    cargarHistorial();
-  }catch(e){showToast('Error: '+e.message,'error');}
-}
-
 function editarOfertaIdx(id){
   const r=historialData.find(h=>h.id===id);
   if(r) editarOferta(r.id, r);
@@ -3281,8 +3311,8 @@ async function editarOferta(itemId, r){
 }
 
 async function borrarOferta(itemId, numOferta, vendedor){
-  // Verificar que sea el dueño
-  if(!currentUserName.toLowerCase().includes(vendedor.split(' ')[0].toLowerCase())){
+  // Verificar que sea el dueño (asesorLabel — no .split(' ')[0], ver bug de Jorge P/Jorge S)
+  if(!vendedor||asesorLabel(vendedor)!==asesorLabel(currentUserName)){
     showToast('Solo puedes borrar tus propias ofertas','error');return;
   }
   if(!confirm('¿Borrar la oferta '+numOferta+'? Esta acción no se puede deshacer.')) return;
@@ -3295,6 +3325,162 @@ async function borrarOferta(itemId, numOferta, vendedor){
     if(r.ok||r.status===204){
       showToast('✓ Oferta '+numOferta+' eliminada','success');
       cargarHistorial();
+    } else {
+      showToast('Error al borrar: '+r.status,'error');
+    }
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+// ── LIMPIEZA DE DUPLICADOS ──
+// Dos pasadas: (1) N° de oferta exacto (normalizado: sin espacios extra, sin
+// distinguir mayúsc/minúsc — para no fallar por diferencias invisibles de texto)
+// -> se puede borrar en bloque. (2) mismo Cliente + mismo Total exacto pero con
+// N° de oferta distinto (probable duplicado con número corrido/editado a mano,
+// o el N° interno ID_SYNERGY no coincide con el Title) -> se listan para revisar
+// y borrar UNO POR UNO, nunca en bloque, porque la señal es más débil.
+function _normNumOferta(s){ return String(s||'').trim().toUpperCase().replace(/\s+/g,' '); }
+
+async function _buscarDuplicados(){
+  const items=await graphGetAll(`/sites/${siteId}/lists/${listIdCotizaciones}/items?expand=fields&$top=500`);
+  const registros=items.map(it=>({
+    id:it.id,
+    idNum:parseInt(it.id)||0,
+    titulo:(it.fields?.Title||'').trim(),
+    idSynergyCampo:(it.fields?.ID_SYNERGY||it.fields?.IDSynergy||'').trim(),
+    numMostrado:(it.fields?.Title||it.fields?.ID_SYNERGY||'—').trim()||'—',
+    cliente:(it.fields?.Cliente||'—').trim(),
+    total:Math.round(it.fields?.GranTotal||0),
+    fecha:it.createdDateTime?new Date(it.createdDateTime):null,
+  }));
+
+  // Pasada 1: por N° de oferta normalizado (Title, o ID_SYNERGY si Title viene vacío)
+  const porNumero={};
+  registros.forEach(r=>{
+    const clave=_normNumOferta(r.titulo||r.idSynergyCampo);
+    if(!clave) return;
+    (porNumero[clave]=porNumero[clave]||[]).push(r);
+  });
+  const duplicadosExactos=Object.values(porNumero).filter(arr=>arr.length>1);
+  const idsYaCubiertos=new Set(duplicadosExactos.flat().map(r=>r.id));
+
+  // Pasada 2: por Cliente + Total exacto, EXCLUYENDO lo que ya salió en la pasada 1
+  const porClienteTotal={};
+  registros.forEach(r=>{
+    if(idsYaCubiertos.has(r.id)) return;
+    if(!r.cliente||r.cliente==='—'||!r.total) return;
+    const clave=r.cliente.toUpperCase()+'|'+r.total;
+    (porClienteTotal[clave]=porClienteTotal[clave]||[]).push(r);
+  });
+  const posiblesDuplicados=Object.values(porClienteTotal).filter(arr=>arr.length>1);
+
+  window._duplicadosExactos=duplicadosExactos;
+  window._posiblesDuplicados=posiblesDuplicados;
+}
+
+async function abrirLimpiezaDuplicados(){
+  const clave=prompt('🔒 Clave para administrar duplicados:');
+  if(clave===null) return;
+  if(clave!==CLAVE_MG){showToast('Clave incorrecta','error');return;}
+  document.getElementById('modalDuplicados').style.display='flex';
+  await abrirLimpiezaDuplicadosSilencioso();
+}
+
+function renderDuplicados(){
+  const body=document.getElementById('duplicadosBody');
+  const exactos=window._duplicadosExactos||[];
+  const posibles=window._posiblesDuplicados||[];
+  if(!exactos.length&&!posibles.length){
+    body.innerHTML='<div class="loading-list" style="text-align:center;padding:20px">✓ No se encontraron duplicados</div>';
+    return;
+  }
+  let totalABorrar=0;
+  const bloquesExactos=exactos.map(arr=>{
+    const ordenado=[...arr].sort((a,b)=>b.idNum-a.idNum); // más reciente (id más alto) primero
+    totalABorrar+=ordenado.length-1;
+    const filas=ordenado.map((it,i)=>{
+      const esConservar=i===0;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;'+(esConservar?'background:#F0FDF4':'background:#FEF2F2')+'">'
+        +'<span>'+(esConservar?'✅ CONSERVAR (más reciente)':'🗑️ BORRAR')+' — '+it.cliente+' · USD '+it.total.toLocaleString('es-CO')+(it.fecha?' · '+it.fecha.toLocaleString('es-CO'):'')+'</span>'
+        +'</div>';
+    }).join('');
+    return '<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">'
+      +'<div style="background:#f5f7f0;padding:6px 10px;font-weight:700;font-size:12px">'+ordenado[0].numMostrado+' — '+ordenado.length+' copias</div>'
+      +filas
+      +'</div>';
+  }).join('');
+
+  const bloquesPosibles=posibles.map(arr=>{
+    const ordenado=[...arr].sort((a,b)=>b.idNum-a.idNum);
+    const filas=ordenado.map((it,i)=>
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;'+(i===0?'background:#F0FDF4':'background:#FFFBEB')+'">'
+        +'<span>'+(i===0?'✅ más reciente':'⚠️')+' — <strong>'+it.numMostrado+'</strong> · '+it.cliente+' · USD '+it.total.toLocaleString('es-CO')+(it.fecha?' · '+it.fecha.toLocaleString('es-CO'):'')+'</span>'
+        +(i>0?'<button class="btn-cli-usar" style="border-color:var(--red);color:var(--red);flex-shrink:0" onclick="borrarDuplicadoManual(\''+it.id+'\',\''+it.numMostrado.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i> Borrar</button>':'')
+      +'</div>'
+    ).join('');
+    return '<div style="margin-bottom:12px;border:1px solid #F59E0B;border-radius:var(--radius);overflow:hidden">'
+      +'<div style="background:#FFFBEB;padding:6px 10px;font-weight:700;font-size:12px;color:#92400E">Mismo cliente y total, N° distinto — '+ordenado.length+' ofertas</div>'
+      +filas
+      +'</div>';
+  }).join('');
+
+  body.innerHTML=''
+    +(exactos.length?'<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:6px">Duplicados exactos (mismo N° de oferta)</div>'+bloquesExactos
+      +'<button class="btn-primary" style="width:100%;background:var(--red);margin-bottom:16px" onclick="ejecutarBorradoDuplicados()"><i class="ti ti-trash"></i> Borrar '+totalABorrar+' duplicado'+(totalABorrar!==1?'s':'')+' exacto'+(totalABorrar!==1?'s':'')+'</button>'
+      :'')
+    +(posibles.length?'<div style="font-size:11px;font-weight:700;color:#92400E;text-transform:uppercase;margin-bottom:6px">Posibles duplicados — revisa y borra uno por uno</div>'
+      +'<p style="font-size:10px;color:var(--text2);margin-bottom:8px">Mismo cliente y mismo total, pero el N° de oferta no coincide exactamente (puede ser un número corrido a mano, o que el campo interno ID_SYNERGY quedó distinto del N° visible). Revisa cada caso antes de borrar.</p>'
+      +bloquesPosibles
+      :'')
+    +'<button class="btn-sec" style="width:100%" onclick="document.getElementById(\'modalDuplicados\').style.display=\'none\'">Cerrar</button>';
+}
+
+async function ejecutarBorradoDuplicados(){
+  const exactos=window._duplicadosExactos||[];
+  const aBorrar=[];
+  exactos.forEach(arr=>{
+    const ordenado=[...arr].sort((a,b)=>b.idNum-a.idNum);
+    ordenado.slice(1).forEach(it=>aBorrar.push(it));
+  });
+  if(!aBorrar.length) return;
+  if(!confirm('¿Borrar '+aBorrar.length+' oferta(s) duplicada(s)? Esta acción no se puede deshacer.')) return;
+  const body=document.getElementById('duplicadosBody');
+  body.innerHTML='<div class="loading-list"><span class="spinner dark"></span> Borrando '+aBorrar.length+' duplicado(s)...</div>';
+  let ok=0, fail=0;
+  for(const it of aBorrar){
+    try{
+      const token=await getToken();
+      const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdCotizaciones}/items/${it.id}`,{
+        method:'DELETE', headers:{Authorization:'Bearer '+token}
+      });
+      if(r.ok||r.status===204) ok++; else fail++;
+    }catch(e){fail++;}
+  }
+  showToast('✓ '+ok+' duplicado(s) borrado(s)'+(fail?' · '+fail+' con error':''),fail?'error':'success');
+  await abrirLimpiezaDuplicadosSilencioso();
+}
+
+// Reabre la búsqueda sin volver a pedir la clave (ya se desbloqueó en esta sesión de modal)
+async function abrirLimpiezaDuplicadosSilencioso(){
+  const body=document.getElementById('duplicadosBody');
+  body.innerHTML='<div class="loading-list"><span class="spinner dark"></span> Buscando duplicados...</div>';
+  try{
+    await _buscarDuplicados();
+    renderDuplicados();
+  }catch(e){
+    body.innerHTML='<div class="loading-list">Error: '+e.message+'</div>';
+  }
+}
+
+async function borrarDuplicadoManual(itemId, numMostrado){
+  if(!confirm('¿Borrar la oferta '+numMostrado+' (id '+itemId+')? Esta acción no se puede deshacer.')) return;
+  try{
+    const token=await getToken();
+    const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listIdCotizaciones}/items/${itemId}`,{
+      method:'DELETE', headers:{Authorization:'Bearer '+token}
+    });
+    if(r.ok||r.status===204){
+      showToast('✓ Oferta '+numMostrado+' eliminada','success');
+      await abrirLimpiezaDuplicadosSilencioso();
     } else {
       showToast('Error al borrar: '+r.status,'error');
     }
