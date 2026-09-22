@@ -51,11 +51,12 @@ Este repositorio es **público** (GitHub Pages gratis). El token de GitHub, el A
 A 22-sep-2026, el usuario pidió portar 3 fases: **(1) Historial + Dashboard, (2) Clientes/Gerente de Cuenta, (3) Posible Cierre + Seguimiento** (dejó fuera, por ahora, la firma digital del PDF). Progreso:
 
 **✅ Ya portado (22-sep-2026):**
-- `asesorLabel()` — y con él, el fix del bug de "vendedores con mismo primer nombre mezclados" en 3 sitios: `editarProbabilidadEstrellas()`, `borrarOferta()`, y el chequeo de Editar/Borrar del Historial.
+- `asesorLabel()` — y con él, el fix del bug de "vendedores con mismo primer nombre mezclados" en 5 sitios: `editarProbabilidadEstrellas()`, `borrarOferta()`, el chequeo de Editar/Borrar del Historial, y los 2 gráficos "por asesor" del Dashboard (antes usaban `.split(' ')[0]`/`.startsWith()`).
 - Historial: Vista Previa de ítems (`previewItems()`), Estado como `<select>` inline de 3 opciones (reemplaza el modal `cambiarEstado`), Probabilidad como 5 estrellas clicables (reemplaza el `prompt()` de `editarProbabilidad`), filtro de N° Oferta (`hFiltNum`), y la herramienta "🧹 Duplicados" completa (`abrirLimpiezaDuplicados()` + 2 pasadas de detección).
+- Dashboard: cross-filter interactivo (`dashFiltro`, clic en cualquiera de los 4 gráficos existentes filtra los demás + los KPIs; clic de nuevo quita el filtro) sobre los mismos 4 gráficos que ya tenía SW (Pipeline por Estado, Ventas por Asesor, Tasa de Cierre por Asesor, Top Tipologías) — no se agregaron gráficos nuevos (Origen, Top Clientes, Scatter, Ofertas x Mes, etc. de Máquinas siguen sin portar, quedan para una fase futura si se necesitan). De paso, 2 bugs reales corregidos en el Dashboard: **"Top Tipologías" duplicaba el valor de ítems con cantidad>1** (`item.tarifa` ya es el total de la línea, se volvía a multiplicar por `cantidad`; mismo bug ya corregido en Máquinas 12-sep-2026) y el mismo bug de asesores mezclados por primer nombre.
 
 **⏳ Pendiente — resto de fase 1 (Dashboard):**
-- Cross-filter interactivo (`dashFiltro`, clic en gráfico filtra el resto) — SW sigue con 4 gráficos estáticos, sin interacción.
+- Filtros de barra superior Mes/Asesor + toggle "Ocultar datos incompletos" (SW solo tiene el filtro de Año) — opcional, no pedido explícitamente, se puede agregar después si se necesita.
 
 **⏳ Pendiente — fase 2 (Clientes):**
 - Gerente de Cuenta ("Mis Clientes" / asignar / reasignar) + "Ofertas a este cliente" en la ficha.
