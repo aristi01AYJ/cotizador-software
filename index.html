@@ -563,6 +563,11 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
           <button class="btn-sec" onclick="cargarDashboard()"><i class="ti ti-refresh"></i></button>
         </div>
       </div>
+      <div id="dashFiltroActivo" style="display:none;align-items:center;gap:8px;background:#EFF6FF;border:1.5px solid #3B82F6;border-radius:var(--radius);padding:8px 14px;margin-bottom:16px;font-size:12px;color:#1E3A8A">
+        <i class="ti ti-filter"></i>
+        <span>Filtrando por <strong id="dashFiltroLabel"></strong> — los gráficos y KPIs de abajo muestran solo esto. Haz clic en cualquier gráfico para filtrar por otra cosa.</span>
+        <button class="btn-sec" onclick="limpiarFiltroDash()" style="margin-left:auto;flex-shrink:0"><i class="ti ti-restore"></i> Quitar filtro</button>
+      </div>
       <div id="dashKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
@@ -3088,8 +3093,25 @@ const ESTADOS_CONFIG = {
 
 let dashCharts={};
 let dashData=[];
+let dashFiltro={tipo:null,valor:null}; // tipo: 'vendedor' | 'estado' | 'tipologia'
+
+// Clic en un gráfico (segmento/barra) filtra los demás gráficos y KPIs por lo mismo. Clic de
+// nuevo en el mismo valor quita el filtro (toggle). Se resetea solo al recargar el dashboard.
+function aplicarFiltroDash(tipo, valor){
+  if(dashFiltro.tipo===tipo && dashFiltro.valor===valor){
+    dashFiltro={tipo:null,valor:null};
+  } else {
+    dashFiltro={tipo,valor};
+  }
+  renderDashboard();
+}
+function limpiarFiltroDash(){
+  dashFiltro={tipo:null,valor:null};
+  renderDashboard();
+}
 
 async function cargarDashboard(){
+  dashFiltro={tipo:null,valor:null};
   document.getElementById('dashKpis').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text2)"><span class="spinner dark"></span> Cargando datos...</div>';
   try{
     const data=await graphGetAll(`/sites/${siteId}/lists/${listIdCotizaciones}/items?expand=fields&$top=500`);
@@ -3117,7 +3139,24 @@ async function cargarDashboard(){
 
 function renderDashboard(){
   const anio=parseInt(document.getElementById('dashAnio')?.value||2026);
-  const datos=dashData.filter(d=>d.anio===anio);
+  let datos=dashData.filter(d=>d.anio===anio);
+
+  // ── Cross-filter: clic en un gráfico filtra los demás ──
+  if(dashFiltro.tipo==='estado'){
+    datos=datos.filter(d=>d.estado===dashFiltro.valor);
+  } else if(dashFiltro.tipo==='vendedor'){
+    datos=datos.filter(d=>asesorLabel(d.vendedor)===dashFiltro.valor);
+  } else if(dashFiltro.tipo==='tipologia'){
+    datos=datos.filter(d=>d.items.some(item=>(item.tipologia||item.tipo||'Otro')===dashFiltro.valor));
+  }
+  const banner=document.getElementById('dashFiltroActivo');
+  if(dashFiltro.tipo){
+    const etiquetaTipo={vendedor:'Vendedor',estado:'Estado',tipologia:'Tipología'}[dashFiltro.tipo]||dashFiltro.tipo;
+    document.getElementById('dashFiltroLabel').textContent=etiquetaTipo+': '+dashFiltro.valor;
+    banner.style.display='flex';
+  } else {
+    banner.style.display='none';
+  }
 
   // ── KPIs ──
   const total=datos.length;
@@ -3153,13 +3192,15 @@ function renderDashboard(){
   renderChart('chartEstados','doughnut',
     estadosKeys,estadosCounts,
     estadosKeys.map(e=>ESTADOS_CONFIG[e].color),
-    {plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}}
+    {plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}},
+    'estado'
   );
 
-  // ── Chart 2: Ventas por Asesor ──
+  // ── Chart 2: Ventas por Asesor — asesorLabel() en vez de .split(' ')[0]/.startsWith(), para
+  // no mezclar vendedores que comparten primer nombre (mismo bug ya corregido en Máquinas) ──
   const asesoresMap={};
   datos.forEach(d=>{
-    const a=d.vendedor.split(' ')[0]||'—';
+    const a=asesorLabel(d.vendedor);
     if(!asesoresMap[a])asesoresMap[a]={total:0,ganadas:0};
     asesoresMap[a].total+=d.total;
     if(d.estado==='Cerrada-Ganada')asesoresMap[a].ganadas+=d.total;
@@ -3169,12 +3210,13 @@ function renderDashboard(){
     ases.map(([k])=>k),
     ases.map(([,v])=>Math.round(v.total)),
     '#80A61B',
-    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}}}
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}}},
+    'vendedor'
   );
 
   // ── Chart 3: Tasa de cierre por asesor ──
   const asesoresCierre=Object.entries(asesoresMap).map(([nombre,v])=>{
-    const ofertas=datos.filter(d=>d.vendedor.startsWith(nombre));
+    const ofertas=datos.filter(d=>asesorLabel(d.vendedor)===nombre);
     const c=ofertas.filter(d=>['Cerrada-Ganada','Cerrada-Perdida'].includes(d.estado)).length;
     const g=ofertas.filter(d=>d.estado==='Cerrada-Ganada').length;
     return{nombre,tasa:c>0?Math.round(g/c*100):0};
@@ -3183,15 +3225,19 @@ function renderDashboard(){
     asesoresCierre.map(a=>a.nombre),
     asesoresCierre.map(a=>a.tasa),
     asesoresCierre.map(a=>a.tasa>=50?'#22C55E':'#F59E0B'),
-    {plugins:{legend:{display:false}},scales:{y:{max:100,ticks:{callback:v=>v+'%'}}}}
+    {plugins:{legend:{display:false}},scales:{y:{max:100,ticks:{callback:v=>v+'%'}}}},
+    'vendedor'
   );
 
-  // ── Chart 4: Top Tipologías ──
+  // ── Chart 4: Top Tipologías — item.tarifa/tarifaUSD YA es el total de la línea (se
+  // multiplica por cantidad al agregar/cambiar cantidad en el carrito, ver
+  // cambiarCantCarrito()) — volver a multiplicar por cantidad aquí duplicaba el valor de
+  // cualquier ítem con cantidad>1 (mismo bug ya corregido en Máquinas, 12-sep-2026) ──
   const tipMap={};
   datos.forEach(d=>{
     d.items.forEach(item=>{
       const tip=item.tipologia||item.tipo||'Otro';
-      tipMap[tip]=(tipMap[tip]||0)+(item.tarifaUSD||item.tarifa||0)*(item.cantidad||1);
+      tipMap[tip]=(tipMap[tip]||0)+(item.tarifaUSD||item.tarifa||0);
     });
   });
   const tips=Object.entries(tipMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
@@ -3199,19 +3245,31 @@ function renderDashboard(){
     tips.map(([k])=>k),
     tips.map(([,v])=>Math.round(v)),
     ['#80A61B','#575756','#3B82F6','#F59E0B','#22C55E','#EF4444'],
-    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}}}
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}}},
+    'tipologia'
   );
 }
 
-function renderChart(id, type, labels, data, colors, options={}){
+function renderChart(id, type, labels, data, colors, options={}, tipoFiltro=null){
   const canvas=document.getElementById(id);
   if(!canvas)return;
   if(dashCharts[id]){dashCharts[id].destroy();delete dashCharts[id];}
   const bgColors=Array.isArray(colors)?colors:Array(labels.length).fill(colors);
+  const finalOptions={...options};
+  if(tipoFiltro){
+    finalOptions.onClick=(evt,elements,chart)=>{
+      if(!elements.length)return;
+      const label=chart.data.labels[elements[0].index];
+      aplicarFiltroDash(tipoFiltro,label);
+    };
+    finalOptions.onHover=(evt,elements)=>{
+      if(evt.native&&evt.native.target) evt.native.target.style.cursor=elements.length?'pointer':'default';
+    };
+  }
   dashCharts[id]=new Chart(canvas,{
     type,
     data:{labels,datasets:[{data,backgroundColor:bgColors,borderRadius:4,borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,...options}
+    options:{responsive:true,maintainAspectRatio:false,...finalOptions}
   });
 }
 
