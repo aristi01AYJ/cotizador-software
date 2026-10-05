@@ -253,6 +253,7 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
       <button id="navClientes" onclick="switchView('clientes')">Clientes</button>
       <button id="navHistorial" onclick="switchView('historial')">Ofertas</button>
       <button id="navSeguimiento" onclick="switchView('seguimiento')" style="position:relative"><i class="ti ti-calendar-event"></i> Seguimiento<span id="badgeSeguimiento" style="display:none;position:absolute;top:1px;right:1px;background:#EF4444;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:10px;line-height:1.3"></span></button>
+      <button id="navDashboard" onclick="switchView('dashboard')"><i class="ti ti-chart-bar"></i> Inteligencia</button>
       <button onclick="abrirLiqSW()" style="background:none;border:none;padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);font-family:inherit"><i class="ti ti-calculator"></i> Liquidador</button>
       
       
@@ -609,10 +610,24 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
     <div id="dashboardView" style="display:none;flex:1;flex-direction:column;overflow-y:auto;background:var(--bg);padding:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
         <strong style="font-size:16px">Inteligencia Comercial</strong>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="dashAnio" onchange="cargarDashboard()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="dashAnio" onchange="renderDashboard()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
             <option>2026</option><option>2025</option>
           </select>
+          <select id="dashMes" onchange="renderDashboard()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
+            <option value="0">Todos los meses</option>
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+          <select id="dashAsesor" onchange="renderDashboard()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
+            <option value="">Todos los asesores</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap">
+            <input type="checkbox" id="dashOcultarIncompletos" checked onchange="renderDashboard()" style="cursor:pointer">
+            Ocultar datos incompletos
+          </label>
           <button class="btn-sec" onclick="cargarDashboard()"><i class="ti ti-refresh"></i></button>
         </div>
       </div>
@@ -621,25 +636,58 @@ body.modo-cop .items-table th:nth-child(4),body.modo-cop .items-table td:nth-chi
         <span>Filtrando por <strong id="dashFiltroLabel"></strong> — los gráficos y KPIs de abajo muestran solo esto. Haz clic en cualquier gráfico para filtrar por otra cosa.</span>
         <button class="btn-sec" onclick="limpiarFiltroDash()" style="margin-left:auto;flex-shrink:0"><i class="ti ti-restore"></i> Quitar filtro</button>
       </div>
+      <div id="dashFiltroDetalle" style="display:none;font-size:11px;color:var(--text2);background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;margin-top:-10px;margin-bottom:16px"></div>
       <div id="dashKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+      <div style="margin-bottom:16px">
+        <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Ofertas x Mes</div>
+          <div style="position:relative;height:220px"><canvas id="chartOfertasMes"></canvas></div>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
           <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Pipeline por Estado</div>
           <div style="position:relative;height:200px"><canvas id="chartEstados"></canvas></div>
         </div>
         <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
-          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Ventas por Asesor (USD)</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Ventas por Asesor — solo Ganadas (EUR)</div>
           <div style="position:relative;height:200px"><canvas id="chartAsesores"></canvas></div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Ofertas x Asesor — Cantidad (todos los estados)</div>
+          <div style="position:relative;height:200px"><canvas id="chartAsesorCant"></canvas></div>
+        </div>
+        <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Ofertas x Asesor — EUR (todos los estados)</div>
+          <div style="position:relative;height:200px"><canvas id="chartAsesorUSD"></canvas></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
         <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
           <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Tasa de Cierre por Asesor</div>
           <div style="position:relative;height:200px"><canvas id="chartCierre"></canvas></div>
         </div>
         <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
-          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Top Tipologías (USD)</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Top Tipologías (EUR)</div>
           <div style="position:relative;height:200px"><canvas id="chartTipologias"></canvas></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Probabilidad Promedio x Vendedor (pipeline abierto)</div>
+          <div style="position:relative;height:200px"><canvas id="chartProbVendedor"></canvas></div>
+        </div>
+        <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Probabilidad x Valor (pipeline abierto)</div>
+          <div style="position:relative;height:200px"><canvas id="chartProbValor"></canvas></div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="background:#fff;border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Top 15 Clientes por N° de Ofertas Presentadas</div>
+          <div style="position:relative;height:420px"><canvas id="chartClientes"></canvas></div>
         </div>
       </div>
     </div>
@@ -2884,21 +2932,23 @@ function switchView(v){
   document.getElementById('historialView').style.display=v==='historial'?'flex':'none';
   document.getElementById('clientesView').style.display=v==='clientes'?'flex':'none';
   document.getElementById('seguimientoView').style.display=v==='seguimiento'?'flex':'none';
+  document.getElementById('dashboardView').style.display=v==='dashboard'?'flex':'none';
 
 
 
   // Ocultar sidebar en vistas de pantalla completa
   const sidebar=document.querySelector('.sidebar');
   if(sidebar) sidebar.style.display=(v==='dashboard'||v==='stock')?'none':'';
-  ['navNueva','navHistorial','navClientes','navSeguimiento'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='';});
-  const navMap={nueva:'navNueva',historial:'navHistorial',clientes:'navClientes',seguimiento:'navSeguimiento'};
+  ['navNueva','navHistorial','navClientes','navSeguimiento','navDashboard'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='';});
+  const navMap={nueva:'navNueva',historial:'navHistorial',clientes:'navClientes',seguimiento:'navSeguimiento',dashboard:'navDashboard'};
   if(navMap[v])document.getElementById(navMap[v]).className='active';
   if(v==='historial')cargarHistorial();
   if(v==='clientes')renderTablaClientes();
   if(v==='seguimiento')abrirSeguimiento();
+  if(v==='dashboard'&&!esMobil())cargarDashboard(); // en móvil lo carga mobileTab('dashboard')
   // Sincronizar tabs móvil
   if(esMobil()){
-    const tabMap={nueva:'carrito',historial:'historial',clientes:'clientes'};
+    const tabMap={nueva:'carrito',historial:'historial',clientes:'clientes',dashboard:'dashboard'};
     const tabTarget=tabMap[v]||'carrito';
     const btn=document.querySelector(`.mobile-tab[onclick*="${tabTarget}"]`);
     mobileTab(tabTarget, btn);
@@ -3974,6 +4024,36 @@ function actualizarBadgeCarrito(){
 }
 
 
+// ── Agrupar revisiones (-R2, -R3...) en una sola "oferta vigente" para estadísticas ──
+// Reabrir y volver a guardar una oferta (Editar, o el resguardo anti-duplicado de
+// guardarCotizacion) SIEMPRE crea un registro nuevo con sufijo -Rn — nunca sobreescribe
+// el anterior, a propósito (así nunca se pierde el historial de qué se cotizó antes).
+// Pero eso significa que una misma negociación real puede tener 3-4 filas en SharePoint,
+// y para Inteligencia/estadísticas debe contar como 1 sola. Estas 3 funciones son el punto
+// único de esa agrupación — se usan en renderDashboard(), filtrarHistorial() y en las
+// estadísticas de la ficha del cliente, para que los 3 lugares cuenten igual.
+function ofertaBaseNum(num){
+  return (num||'').replace(/-R\d+$/,'');
+}
+function ofertaNumRevision(num){
+  const m=(num||'').match(/-R(\d+)$/);
+  return m?parseInt(m[1]):1;
+}
+// De una lista de ofertas (historialData o dashData, ambas traen .num y .id) devuelve solo
+// la revisión vigente (mayor N° de revisión; si empatan, mayor id de SharePoint = más
+// reciente) de cada N° base. Puro filtro de vista — no borra ni modifica nada en SharePoint,
+// mismo criterio que "ocultar datos incompletos" del Dashboard.
+function soloVigentes(lista){
+  const porBase=new Map();
+  lista.forEach(r=>{
+    const base=ofertaBaseNum(r.num);
+    const actual=porBase.get(base);
+    if(!actual){ porBase.set(base,r); return; }
+    const revR=ofertaNumRevision(r.num), revActual=ofertaNumRevision(actual.num);
+    if(revR>revActual||(revR===revActual&&(r.id||0)>(actual.id||0))) porBase.set(base,r);
+  });
+  return [...porBase.values()];
+}
 // ══ DASHBOARD INTELIGENCIA COMERCIAL ══════════════════════════════════
 const ESTADOS_CONFIG = {
   'Enviada':       {color:'#F59E0B',bg:'#FEF3C7',text:'#92400E'},
@@ -3988,9 +4068,27 @@ let dashCharts={};
 let dashData=[];
 let dashFiltro={tipo:null,valor:null}; // tipo: 'vendedor' | 'estado' | 'tipologia'
 
-// Clic en un gráfico (segmento/barra) filtra los demás gráficos y KPIs por lo mismo. Clic de
-// nuevo en el mismo valor quita el filtro (toggle). Se resetea solo al recargar el dashboard.
+// Clic en un gráfico (segmento/barra) filtra los demás gráficos y KPIs por lo mismo.
+// Clic de nuevo sobre lo ya filtrado lo quita (toggle).
+// 'vendedor' es caso especial: en vez del banner de cross-filter, mueve el dropdown de
+// Asesor de la barra superior (así queda un solo control para "qué asesor" sea que lo
+// hayas elegido del dropdown o hecho clic en una barra de asesor).
+const MESES_CORTO=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
 function aplicarFiltroDash(tipo, valor){
+  if(tipo==='vendedor'){
+    const sel=document.getElementById('dashAsesor');
+    if(sel) sel.value=(sel.value===valor)?'':valor; // toggle
+    renderDashboard();
+    return;
+  }
+  if(tipo==='mes'){
+    const idx=MESES_CORTO.indexOf(valor)+1; // 1-12
+    const sel=document.getElementById('dashMes');
+    if(sel) sel.value=(parseInt(sel.value)===idx)?'0':String(idx); // toggle
+    renderDashboard();
+    return;
+  }
   if(dashFiltro.tipo===tipo && dashFiltro.valor===valor){
     dashFiltro={tipo:null,valor:null};
   } else {
@@ -4003,17 +4101,40 @@ function limpiarFiltroDash(){
   renderDashboard();
 }
 
+function poblarAsesoresDash(){
+  const sel=document.getElementById('dashAsesor');
+  if(!sel) return;
+  const actual=sel.value;
+  const nombres=[...new Set(dashData.map(d=>asesorLabel(d.vendedor)).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">Todos los asesores</option>'+nombres.map(n=>`<option value="${n}">${n}</option>`).join('');
+  if(nombres.includes(actual)) sel.value=actual;
+}
+
+// Software guarda los ítems en formato compacto {n,t,c,tl} (sin tipología). Para las estadísticas se
+// normalizan al formato que usa el Dashboard; la tipología se toma del catálogo por nombre del ítem.
+function normalizarItemsDash(itemsJSON){
+  let raw=[];
+  try{ raw=JSON.parse(itemsJSON||'[]'); }catch(e){}
+  return raw.map(x=>{
+    const nombre=x.nombre||x.n||'';
+    const cat=(typeof rawGrupos!=='undefined'&&rawGrupos&&rawGrupos.find(g=>g.title===nombre||g.nombre===nombre))
+      ||(typeof rawMaquinas!=='undefined'&&rawMaquinas&&rawMaquinas.find(m=>m.title===nombre))||null;
+    return{nombre,tarifa:x.tarifaUSD||x.tarifa||x.t||0,tipologia:x.tipologia||(cat&&cat.tipologia)||'',tipo:x.tipo||'stock'};
+  });
+}
+
 async function cargarDashboard(){
   dashFiltro={tipo:null,valor:null};
+  const mesEl=document.getElementById('dashMes'); if(mesEl) mesEl.value='0';
+  const asesorEl=document.getElementById('dashAsesor'); if(asesorEl) asesorEl.value='';
   document.getElementById('dashKpis').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text2)"><span class="spinner dark"></span> Cargando datos...</div>';
   try{
     const data=await graphGetAll(`/sites/${siteId}/lists/${listIdCotizaciones}/items?expand=fields&$top=500`);
     dashData=data.map(i=>{
       const f=i.fields;
-      const fechaRaw=f.Fecha_x005f_Cotizacion||i.createdDateTime||null;
-      // GranTotal está guardado en COP (ver guardarCotizacion()), no en EUR — se convierte con
-      // la TRM COP/EUR guardada en TasaEur, o la actual como aproximación si la oferta es de
-      // antes de que ese campo existiera.
+      const fechaRaw=f.Fecha_Cotizacion||f.Fecha_x005f_Cotizacion||i.createdDateTime||null;
+      // GranTotal está guardado en COP (ver guardarCotizacion()); el Dashboard trabaja en EUR: se
+      // convierte con la TRM COP/EUR guardada, o la actual como aproximación en ofertas viejas.
       const totalCOPraw=parseFloat(f.GranTotal||0);
       const tasaEURraw=parseFloat(f.TasaEur||f.TRM||0)||trm||4000;
       return{
@@ -4026,10 +4147,11 @@ async function cargarDashboard(){
         prob:parseFloat(f.Probabilidad||0),
         fecha:fechaRaw?new Date(fechaRaw):null,
         anio:fechaRaw?new Date(fechaRaw).getFullYear():2026,
-        items:f.Items?JSON.parse(f.Items||'[]'):[],
+        items:normalizarItemsDash(f.Items),
         id:i.id,
       };
     });
+    poblarAsesoresDash();
     renderDashboard();
   }catch(e){
     document.getElementById('dashKpis').innerHTML=`<div style="grid-column:1/-1;color:var(--red);padding:20px">Error: ${e.message}</div>`;
@@ -4038,23 +4160,51 @@ async function cargarDashboard(){
 
 function renderDashboard(){
   const anio=parseInt(document.getElementById('dashAnio')?.value||2026);
-  let datos=dashData.filter(d=>d.anio===anio);
+  // Agrupar revisiones (-R2, -R3...) ANTES de filtrar por año: si la vigente de una familia
+  // quedó en un año distinto al de su primera revisión, debe contar en el año de la vigente,
+  // no en el de una revisión vieja que ya no importa. Ver soloVigentes() más arriba.
+  let datos=soloVigentes(dashData).filter(d=>d.anio===anio);
 
-  // ── Cross-filter: clic en un gráfico filtra los demás ──
+  // ── Filtros de barra superior: Mes, Asesor, Ocultar datos incompletos ──
+  const mesSel=parseInt(document.getElementById('dashMes')?.value||0);
+  if(mesSel) datos=datos.filter(d=>d.fecha&&(d.fecha.getMonth()+1)===mesSel);
+  const asesorSel=document.getElementById('dashAsesor')?.value||'';
+  if(asesorSel) datos=datos.filter(d=>asesorLabel(d.vendedor)===asesorSel);
+  const ocultarIncompletos=document.getElementById('dashOcultarIncompletos')?.checked??true;
+  if(ocultarIncompletos){
+    // "Incompleto" a nivel de oferta: sin cliente o en $0 — dato claramente roto, no un
+    // caso de negocio real. Los ítems sin Tipología se excluyen aparte, más abajo, solo
+    // del gráfico de Tipologías (la oferta en sí puede seguir siendo válida).
+    datos=datos.filter(d=>d.cliente&&d.cliente!=='—'&&d.total>0);
+  }
+
+  // ── Cross-filter: clic en un gráfico filtra los demás (vendedor ya no pasa por aquí,
+  // ver aplicarFiltroDash — usa el dropdown de Asesor de arriba) ──
   if(dashFiltro.tipo==='estado'){
     datos=datos.filter(d=>d.estado===dashFiltro.valor);
-  } else if(dashFiltro.tipo==='vendedor'){
-    datos=datos.filter(d=>asesorLabel(d.vendedor)===dashFiltro.valor);
   } else if(dashFiltro.tipo==='tipologia'){
-    datos=datos.filter(d=>d.items.some(item=>(item.tipologia||item.tipo||'Otro')===dashFiltro.valor));
+    datos=datos.filter(d=>d.items.some(item=>(item.tipologia||'Sin tipología')===dashFiltro.valor));
+  } else if(dashFiltro.tipo==='cliente'){
+    datos=datos.filter(d=>(d.cliente||'—')===dashFiltro.valor);
   }
   const banner=document.getElementById('dashFiltroActivo');
+  const detalle=document.getElementById('dashFiltroDetalle');
   if(dashFiltro.tipo){
-    const etiquetaTipo={vendedor:'Vendedor',estado:'Estado',tipologia:'Tipología'}[dashFiltro.tipo]||dashFiltro.tipo;
+    const etiquetaTipo={vendedor:'Vendedor',estado:'Estado',tipologia:'Tipología',cliente:'Cliente'}[dashFiltro.tipo]||dashFiltro.tipo;
     document.getElementById('dashFiltroLabel').textContent=etiquetaTipo+': '+dashFiltro.valor;
     banner.style.display='flex';
+    // Ayuda para diagnosticar "Sin tipología": qué máquinas exactas la están causando,
+    // para saber si hay que llenar la columna Tipología en SharePoint o son ítems manuales.
+    if(dashFiltro.tipo==='tipologia'&&dashFiltro.valor==='Sin tipología'){
+      const nombres=[...new Set(datos.flatMap(d=>d.items).filter(it=>!it.tipologia).map(it=>it.nombre||'(sin nombre)'))].sort();
+      detalle.style.display='block';
+      detalle.textContent='Ítems sin Tipología: '+nombres.join(', ');
+    } else {
+      detalle.style.display='none';
+    }
   } else {
     banner.style.display='none';
+    detalle.style.display='none';
   }
 
   // ── KPIs ──
@@ -4084,6 +4234,15 @@ function renderDashboard(){
       <div style="font-size:11px;color:var(--text3)">${k.sub}</div>
     </div>`).join('');
 
+  // ── Chart 0: Ofertas x Mes ──
+  const mesesCount=Array(12).fill(0);
+  datos.forEach(d=>{ if(d.fecha) mesesCount[d.fecha.getMonth()]++; });
+  renderChart('chartOfertasMes','bar',
+    MESES_CORTO,mesesCount,'#3B82F6',
+    {plugins:{legend:{display:false}},scales:{y:{ticks:{stepSize:1,precision:0}}}},
+    'mes'
+  );
+
   // ── Chart 1: Pipeline por Estado ──
   const estadosKeys=Object.keys(ESTADOS_CONFIG);
   const estadosCounts=estadosKeys.map(e=>datos.filter(d=>d.estado===e).reduce((s,d)=>s+d.total,0));
@@ -4094,21 +4253,41 @@ function renderDashboard(){
     'estado'
   );
 
-  // ── Chart 2: Ventas por Asesor — asesorLabel() en vez de .split(' ')[0]/.startsWith(), para
-  // no mezclar vendedores que comparten primer nombre (mismo bug ya corregido en Máquinas) ──
+  // ── Chart 2: Ventas por Asesor (SOLO Cerrada-Ganada — "ventas" = negocio ya cerrado, no
+  // todo lo cotizado; usar asesoresMap[].total mezclaba pipeline+ganadas+perdidas) ──
   const asesoresMap={};
   datos.forEach(d=>{
     const a=asesorLabel(d.vendedor);
-    if(!asesoresMap[a])asesoresMap[a]={total:0,ganadas:0};
+    if(!asesoresMap[a])asesoresMap[a]={total:0,ganadas:0,cantidad:0};
     asesoresMap[a].total+=d.total;
+    asesoresMap[a].cantidad++;
     if(d.estado==='Cerrada-Ganada')asesoresMap[a].ganadas+=d.total;
   });
-  const ases=Object.entries(asesoresMap).sort((a,b)=>b[1].total-a[1].total).slice(0,6);
+  const ases=Object.entries(asesoresMap).sort((a,b)=>b[1].ganadas-a[1].ganadas).slice(0,6);
   renderChart('chartAsesores','bar',
     ases.map(([k])=>k),
-    ases.map(([,v])=>Math.round(v.total)),
+    ases.map(([,v])=>Math.round(v.ganadas)),
     '#80A61B',
-    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}}},
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'€'+Math.round(v/1000)+'K'}}}},
+    'vendedor'
+  );
+
+  // ── Chart 2b/2c: Ofertas x Asesor — Cantidad y USD, TODOS los estados (a diferencia de
+  // "Ventas por Asesor" de arriba, que solo cuenta lo Ganado) ──
+  const asesoresCant=Object.entries(asesoresMap).sort((a,b)=>b[1].cantidad-a[1].cantidad).slice(0,6);
+  renderChart('chartAsesorCant','bar',
+    asesoresCant.map(([k])=>k),
+    asesoresCant.map(([,v])=>v.cantidad),
+    '#3B82F6',
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{stepSize:1,precision:0}}}},
+    'vendedor'
+  );
+  const asesoresUSD=Object.entries(asesoresMap).sort((a,b)=>b[1].total-a[1].total).slice(0,6);
+  renderChart('chartAsesorUSD','bar',
+    asesoresUSD.map(([k])=>k),
+    asesoresUSD.map(([,v])=>Math.round(v.total)),
+    '#575756',
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'€'+Math.round(v/1000)+'K'}}}},
     'vendedor'
   );
 
@@ -4127,14 +4306,16 @@ function renderDashboard(){
     'vendedor'
   );
 
-  // ── Chart 4: Top Tipologías — item.tarifa/tarifaUSD YA es el total de la línea (se
-  // multiplica por cantidad al agregar/cambiar cantidad en el carrito, ver
-  // cambiarCantCarrito()) — volver a multiplicar por cantidad aquí duplicaba el valor de
-  // cualquier ítem con cantidad>1 (mismo bug ya corregido en Máquinas, 12-sep-2026) ──
+  // ── Chart 4: Top Tipologías ──
+  // item.tipo es DISPONIBILIDAD ('stock'/'importacion'/'pedido'), no una tipología — no usar
+  // como fallback, mezclaba "pedido" como si fuera una categoría de máquina.
+  // item.tarifaUSD ya es el total de esa línea (tarifa × cantidad se aplicó al agregar al
+  // carrito) — NO volver a multiplicar por cantidad aquí, se estaba duplicando.
   const tipMap={};
   datos.forEach(d=>{
     d.items.forEach(item=>{
-      const tip=item.tipologia||item.tipo||'Otro';
+      const tip=item.tipologia||'Sin tipología';
+      if(ocultarIncompletos&&tip==='Sin tipología') return; // ítem sin categorizar — no distorsiona el ranking
       tipMap[tip]=(tipMap[tip]||0)+(item.tarifaUSD||item.tarifa||0);
     });
   });
@@ -4143,11 +4324,79 @@ function renderDashboard(){
     tips.map(([k])=>k),
     tips.map(([,v])=>Math.round(v)),
     ['#80A61B','#575756','#3B82F6','#F59E0B','#22C55E','#EF4444'],
-    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}}},
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'€'+Math.round(v/1000)+'K'}}}},
     'tipologia'
   );
+
+  // ── Chart 5: Probabilidad promedio x Vendedor (solo ofertas abiertas: Enviada —
+  // en cerradas la probabilidad ya no aplica, quedó ganada o perdida) ──
+  const probMap={};
+  datos.filter(d=>!['Cerrada-Ganada','Cerrada-Perdida'].includes(d.estado)).forEach(d=>{
+    const a=asesorLabel(d.vendedor);
+    if(!probMap[a])probMap[a]={suma:0,n:0};
+    probMap[a].suma+=d.prob;
+    probMap[a].n++;
+  });
+  const probVendedor=Object.entries(probMap).map(([nombre,v])=>[nombre,v.n>0?Math.round(v.suma/v.n):0]).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  renderChart('chartProbVendedor','bar',
+    probVendedor.map(([k])=>k),
+    probVendedor.map(([,v])=>v),
+    probVendedor.map(([,v])=>v>=50?'#22C55E':'#F59E0B'),
+    {plugins:{legend:{display:false}},scales:{y:{max:100,ticks:{callback:v=>v+'%'}}}},
+    'vendedor'
+  );
+
+  // ── Chart 6: Probabilidad x Valor (dispersión — cada punto es una oferta abierta;
+  // ayuda a ver ofertas grandes con probabilidad baja, o chicas con probabilidad alta) ──
+  const abiertas=datos.filter(d=>!['Cerrada-Ganada','Cerrada-Perdida'].includes(d.estado));
+  renderScatterProbValor(abiertas);
+
+  // ── Chart 7: Top 15 Clientes por N° de ofertas presentadas ──
+  const clientesMap={};
+  datos.forEach(d=>{
+    const c=d.cliente||'—';
+    clientesMap[c]=(clientesMap[c]||0)+1;
+  });
+  const topClientes=Object.entries(clientesMap).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  renderChart('chartClientes','bar',
+    topClientes.map(([k])=>k),
+    topClientes.map(([,v])=>v),
+    '#3B82F6',
+    {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{stepSize:1,precision:0}}}},
+    'cliente'
+  );
+
 }
 
+// Scatter Probabilidad(%) x Valor(USD) — chart aparte de renderChart() porque usa ejes x/y
+// numéricos (no categorías con label por índice) y tooltip con nombre de cliente.
+function renderScatterProbValor(ofertas){
+  const canvas=document.getElementById('chartProbValor');
+  if(!canvas)return;
+  if(dashCharts['chartProbValor']){dashCharts['chartProbValor'].destroy();delete dashCharts['chartProbValor'];}
+  const puntos=ofertas.map(d=>({x:d.prob,y:d.total,cliente:d.cliente,num:d.num}));
+  dashCharts['chartProbValor']=new Chart(canvas,{
+    type:'scatter',
+    data:{datasets:[{data:puntos,backgroundColor:'#3B82F6',pointRadius:6,pointHoverRadius:8}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const p=ctx.raw;
+          return (p.num?p.num+' · ':'')+(p.cliente||'')+' — '+p.x+'% · EUR '+Math.round(p.y).toLocaleString('es-CO');
+        }}}
+      },
+      scales:{
+        x:{title:{display:true,text:'Probabilidad (%)'},min:0,max:100,ticks:{callback:v=>v+'%'}},
+        y:{title:{display:true,text:'Valor (EUR)'},ticks:{callback:v=>'€'+Math.round(v/1000)+'K'}}
+      }
+    }
+  });
+}
+
+// tipoFiltro (opcional): 'vendedor' | 'estado' | 'tipologia' — si se da, un clic en el
+// gráfico llama aplicarFiltroDash(tipoFiltro, <label clicado>) y filtra todo el dashboard.
 function renderChart(id, type, labels, data, colors, options={}, tipoFiltro=null){
   const canvas=document.getElementById(id);
   if(!canvas)return;
