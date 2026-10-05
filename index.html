@@ -2678,7 +2678,7 @@ function filtrarHistorial(){
             const estilo=r.fechaSeguimiento
               ?(segVencido?'background:#FEE2E2;color:#991B1B;font-weight:600':'background:var(--bg);color:var(--text2)')
               :'background:#fff;border:1px dashed var(--border);color:var(--text3)';
-            return '<span onclick="abrirModalCierre(\''+r.id+'\','+JSON.stringify(r.fechaCierre?r.fechaCierre.toISOString().split('T')[0]:null)+')" title="Clic para definir/editar el Posible Cierre" style="cursor:pointer;font-size:11px;padding:2px 8px;border-radius:10px;'+estilo+'">'+segTexto+'</span>';
+            return '<span onclick="abrirModalCierre(\''+r.id+'\','+(r.fechaCierre?"'"+r.fechaCierre.toISOString().split('T')[0]+"'":'null')+')" title="Clic para definir/editar el Posible Cierre" style="cursor:pointer;font-size:11px;padding:2px 8px;border-radius:10px;'+estilo+'">'+segTexto+'</span>';
           })()
         +'</td>'
         +'<td class="total" style="text-align:right;white-space:nowrap">'
