@@ -2009,12 +2009,11 @@ function cambiarCantCarrito(idx, delta){
 
 function removerItem(i){carrito.splice(i,1);renderCarrito();calcTotales();renderCatalogo();}
 
-function calcTotales(){
+// Única fuente de verdad de los totales (pantalla, guardado y PDF): primero el descuento por grupo, luego el IVA sobre lo que queda
+function calcularOferta(){
   const desc=getDescuento();
   const descAYJpct=parseFloat(document.getElementById('descAYJ')?.value)||0;
-  const fleteCOP=0;
   const ivaPct=19;
-  // Separar por grupo
   const itemsLic=carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Software');
   const itemsAYJ=carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios AYJ');
   const itemsImos=carrito.filter(i=>getGrupoItem(i.tipologia,i.marca)==='Servicios imos');
@@ -2022,15 +2021,17 @@ function calcTotales(){
   const subAYJ=itemsAYJ.reduce((s,i)=>s+i.tarifa,0);
   const subImos=itemsImos.reduce((s,i)=>s+i.tarifa,0);
   const subUSD=subLic+subAYJ+subImos;
-  // Descuentos por grupo
   const descLicUSD=subLic*desc/100;
   const descAYJUSD=subAYJ*descAYJpct/100;
   const descImosUSD=0; // siempre 0
   const descUSD=descLicUSD+descAYJUSD+descImosUSD;
   const baseUSD=subUSD-descUSD;
   const ivaUSD=baseUSD*ivaPct/100;
-  const fleteUSD=0;
   const totalUSD=baseUSD+ivaUSD;
+  return {desc,descAYJpct,ivaPct,subUSD,descLicUSD,descAYJUSD,descUSD,baseUSD,ivaUSD,totalUSD};
+}
+function calcTotales(){
+  const {descAYJpct,subUSD,descLicUSD,descAYJUSD,descUSD,baseUSD,ivaUSD,totalUSD}=calcularOferta();
   const totalCOP=Math.round(totalUSD*trm);
   document.getElementById('tSubUSD').textContent=fmtUSD(subUSD);
   document.getElementById('tSubCOP').textContent=fmtCOP(subUSD);
@@ -2361,10 +2362,7 @@ async function guardarCotizacion(){
   if(!cliente){showToast('Ingresa el cliente','error');return;}
   if(!carrito.length){showToast('El carrito está vacío','error');return;}
   if(!listIdCotizaciones){showToast('Lista Cotizaciones no encontrada','error');return;}
-  const subUSD=carrito.reduce((s,i)=>s+i.tarifa,0);
-  const descUSD=subUSD*desc/100;
-  const baseUSD=subUSD-descUSD;
-  const ivaUSD=baseUSD*ivaPct/100;
+  const {subUSD,descUSD,baseUSD,ivaUSD}=calcularOferta();
   const fleteUSD=trm>0?fleteCOP/trm:0;
   const totalUSD=baseUSD+ivaUSD+fleteUSD;
   const totalCOP=Math.round(totalUSD*trm);
